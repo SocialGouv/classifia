@@ -11,7 +11,20 @@ export class CrispService {
   constructor(private readonly configService: ConfigService<Env, true>) {
     this.crispApi = axios.create({
       baseURL: this.configService.getOrThrow('CRISP_URL'),
+      headers: {
+        Authorization: `Basic ${this.configService.getOrThrow('CRISP_API_KEY')}`,
+        'X-Crisp-Tier': 'plugin',
+      },
     });
+  }
+
+  async getConversations(limit?: number) {
+    const response = await this.crispApi.get('/conversations', {
+      params: {
+        limit,
+      },
+    });
+    return response.data;
   }
 
   async getConversation(conversationId: string) {

@@ -13,7 +13,8 @@ export const configValidationSchema = z.object({
   OPENAI_API_KEY: z.string().min(1),
 
   CRISP_WEBHOOK_SECRET: z.string().min(1),
-  CRISP_URL: z.string().min(1),
+  CRISP_API_KEY: z.string().min(1),
+  CRISP_URL: z.url(),
 
   BULLMQ_CONCURRENCY: z.coerce.number().int().min(1),
   BULLMQ_ATTEMPTS: z.coerce.number().int().min(0),
