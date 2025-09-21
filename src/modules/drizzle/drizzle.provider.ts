@@ -4,7 +4,7 @@ import { Pool } from 'pg';
 
 import * as schema from './schema';
 
-export const DrizzleAsyncProvider = 'DrizzleAsyncProvider';
+export const DrizzleAsyncProvider = 'DrizzleProvider';
 
 export const drizzleProvider = [
   {

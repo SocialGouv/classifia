@@ -1,4 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 
-@Injectable()
-export class DrizzleService {}
+import { DrizzleAsyncProvider } from './drizzle.provider';
+import * as schema from './schema';
+
+export class DrizzleService {
+  constructor(
+    @Inject(DrizzleAsyncProvider)
+    public readonly db: NodePgDatabase<typeof schema>,
+  ) {}
+}
