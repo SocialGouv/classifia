@@ -1,4 +1,5 @@
 import { pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
+
 import { conversationsTable } from './conversations';
 import { labelsTable } from './labels';
 

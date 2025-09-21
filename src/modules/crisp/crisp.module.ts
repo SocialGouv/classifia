@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { CrispService } from './crisp.service';
+
 import { CrispController } from './crisp.controller';
+import { CrispService } from './crisp.service';
 
 @Module({
   controllers: [CrispController],
