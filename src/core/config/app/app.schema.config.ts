@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const configValidationSchema = z.object({
   ALBERT_API_KEY: z.string().optional(),
+  ALBERT_URL: z.string().optional(),
 
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url(),
