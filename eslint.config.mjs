@@ -1,38 +1,50 @@
-// @ts-check
-import eslint from '@eslint/js';
-import eslintPluginImport from 'eslint-plugin-import';
-import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+import { FlatCompat } from '@eslint/eslintrc';
+import js from '@eslint/js';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+});
+
+export default [
   {
-    ignores: ['eslint.config.mjs'],
+    ignores: ['eslint.config.mjs', 'dist/**', 'node_modules/**'],
   },
-  eslint.configs.recommended,
+  js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
-  eslintPluginPrettierRecommended,
+  ...compat.extends('plugin:prettier/recommended'),
   {
     plugins: {
-      import: eslintPluginImport,
+      import: (await import('eslint-plugin-import')).default,
     },
+
     languageOptions: {
       globals: {
         ...globals.node,
         ...globals.jest,
       },
-      sourceType: 'commonjs',
+      sourceType: 'module',
       parserOptions: {
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
     },
-  },
-  {
+
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -65,4 +77,4 @@ export default tseslint.config(
       ],
     },
   },
-);
+];
