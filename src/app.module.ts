@@ -5,6 +5,7 @@ import { validateConfig } from './core/config/app/app.schema.config';
 import { AiModule } from './modules/ai/ai.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
 import { CrispModule } from './modules/crisp/crisp.module';
+import { DrizzleModule } from './modules/drizzle/drizzle.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { CrispModule } from './modules/crisp/crisp.module';
     AiModule,
     CrispModule,
     ConversationsModule,
+    DrizzleModule,
   ],
 })
 export class AppModule {}
