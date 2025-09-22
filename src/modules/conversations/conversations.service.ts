@@ -2,16 +2,18 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
 
-import { AlbertService } from '../ai/albert/albert.service';
+import { OpenaiAgentsService } from '../ai/agents/openai-agents/openai-agents.service';
 import { CrispService } from '../crisp/crisp.service';
+
+import { mockConversationClean } from '@/common/mocks/mock-data-clean.hide';
 
 @Injectable()
 export class ConversationsService {
   constructor(
-    private readonly albert: AlbertService,
     private readonly crisp: CrispService,
     @InjectQueue('conversations')
     private readonly conversationsQueue: Queue,
+    private readonly openaiAgentsService: OpenaiAgentsService,
   ) {}
 
   newConversation(_labels: string[]) {
@@ -29,8 +31,9 @@ export class ConversationsService {
   }
 
   async processConversation(_data: { labels: string[] }) {
-    const res = await this.albert.complete('Hello, how are you?');
-    console.log('first', res);
+    const res = await this.openaiAgentsService.getLabelFromConverationAgent(
+      JSON.stringify(mockConversationClean || []),
+    );
     return res;
   }
 }

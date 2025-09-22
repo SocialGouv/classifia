@@ -4,7 +4,7 @@
 
 Ce service catégorise automatiquement les conversations support (via Crisp) afin d’identifier les problématiques récurrentes et générer des statistiques fiables (tendances mensuelles, top sujets, etc.).
 
-L’approche retenue est **Option 1 (delete/insert)** :  
+L’approche retenue est **Option 1 (delete/insert)** :
 à chaque reprocessing d’une conversation, on supprime les anciennes associations labels ↔ conversation, et on réinsère uniquement les labels extraits lors de la dernière analyse.
 
 ---
@@ -23,36 +23,13 @@ L’approche retenue est **Option 1 (delete/insert)** :
 
 ---
 
-## 🗄️ Schéma de Base de Données
+## 🧩 Architecture
 
-```mermaid
-erDiagram
-    conversations {
-        uuid id PK
-        text_hash text UNIQUE
-        created_at timestamp
-        updated_at timestamp
-    }
-
-    labels {
-        uuid id PK
-        name text UNIQUE
-        embedding vector(1536)
-        alias_of uuid FK nullable
-        created_at timestamp
-    }
-
-    conversation_labels {
-        uuid id PK
-        conversation_id FK
-        label_id FK
-        created_at timestamp
-    }
-
-    conversations ||--o{ conversation_labels : "has"
-    labels ||--o{ conversation_labels : "applies"
-    labels ||--o{ labels : "alias"
-```
+- AiModule : agents via `AgentsModule` → `LlmModule` → `AlbertModel` (HTTP vers `ALBERT_URL`).
+- ConversationsModule : queue BullMQ `conversations` et worker `ConversationsProcessor` pour orchestrer le traitement.
+- CrispModule : client HTTP Crisp (`CRISP_URL`, `CRISP_API_KEY`).
+- DrizzleModule : provider PostgreSQL et schémas `conversations`, `labels`, `conversation_labels`.
+- Config : validation Zod des variables d'env (Redis, DB, Crisp, LLM, limites et seuils).
 
 ---
 

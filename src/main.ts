@@ -3,8 +3,11 @@ import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
+import { setTracingDisabled } from '@openai/agents';
 
 import { AppModule } from './app.module';
+
+setTracingDisabled(true);
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
