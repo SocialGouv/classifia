@@ -1,5 +1,6 @@
+import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { validateConfig } from './core/config/app/app.schema.config';
 import { AiModule } from './modules/ai/ai.module';
@@ -13,6 +14,16 @@ import { DrizzleModule } from './modules/drizzle/drizzle.module';
       isGlobal: true,
       cache: true,
       validate: validateConfig,
+    }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          host: configService.get('REDIS_HOST'),
+          port: configService.get('REDIS_PORT'),
+        },
+      }),
+      inject: [ConfigService],
     }),
     AiModule,
     CrispModule,

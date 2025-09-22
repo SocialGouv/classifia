@@ -4,8 +4,9 @@ export const configValidationSchema = z.object({
   ALBERT_API_KEY: z.string().optional(),
   ALBERT_URL: z.string().optional(),
 
-  DATABASE_URL: z.string().url(),
-  REDIS_URL: z.string().url(),
+  DATABASE_URL: z.url(),
+  REDIS_HOST: z.string().min(1),
+  REDIS_PORT: z.coerce.number().int().positive().default(6379),
 
   NODE_ENV: z.enum(['development', 'test', 'production']),
   PORT: z.coerce.number().int().positive(),

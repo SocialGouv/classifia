@@ -22,14 +22,15 @@ export class CrispService {
     const response = await this.crispApi.get('/conversations', {
       params: {
         limit,
+        filter_resolved: 1,
       },
     });
     return response.data;
   }
 
-  async getConversation(conversationId: string) {
+  async getConversationMessages(conversationId: string) {
     const response = await this.crispApi.get(
-      `/conversations/${conversationId}`,
+      `/conversation/${conversationId}/messages`,
     );
     return response.data;
   }

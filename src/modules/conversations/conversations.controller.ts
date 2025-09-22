@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 
 import { ConversationsService } from './conversations.service';
 
@@ -15,5 +15,11 @@ export class ConversationsController {
   getConversations(@Query('limit') limit?: string) {
     const parsedLimit = limit ? Number(limit) : 10;
     return this.conversationsService.getConversations(parsedLimit);
+  }
+
+  @Get(':conversation_id')
+  getConversationMessages(@Param('conversation_id') conversationId: string) {
+    console.log('conversationId', conversationId);
+    return this.conversationsService.getConversationMessages(conversationId);
   }
 }
