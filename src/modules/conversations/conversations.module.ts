@@ -6,6 +6,7 @@ import { CrispModule } from '../crisp/crisp.module';
 import { DrizzleModule } from '../drizzle/drizzle.module';
 
 import { ConversationsController } from './conversations.controller';
+import { CONVERSATIONS_QUEUE } from './conversations.job';
 import { ConversationsProcessor } from './conversations.processor';
 import { ConversationsService } from './conversations.service';
 
@@ -15,7 +16,7 @@ import { ConversationsService } from './conversations.service';
     AiModule,
     DrizzleModule,
     BullModule.registerQueue({
-      name: 'conversations',
+      name: CONVERSATIONS_QUEUE,
     }),
   ],
   controllers: [ConversationsController],

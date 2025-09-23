@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 
+import { AgentsChatModelAdapter } from '../adapters/agents-chat-model.adapter';
 import { LlmModule } from '../llm/llm.module';
 
-import { OpenaiAgentsService } from './openai-agents/openai-agents.service';
+import { ClassifyAgent } from './openai-agents/classify.agent';
 
 @Module({
+  providers: [ClassifyAgent, AgentsChatModelAdapter],
+  exports: [ClassifyAgent],
   imports: [LlmModule],
-  providers: [OpenaiAgentsService],
-  exports: [OpenaiAgentsService],
 })
 export class AgentsModule {}

@@ -2,10 +2,11 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
 
-import { OpenaiAgentsService } from '../ai/agents/openai-agents/openai-agents.service';
-import { CrispService } from '../crisp/crisp.service';
+import { CONVERSATIONS_JOBS } from './conversations.job';
 
 import { mockConversationClean } from '@/common/mocks/mock-data-clean.hide';
+import { ClassifyConversationFlow } from '@/modules/ai/flows/classify-conversation.flow';
+import { CrispService } from '@/modules/crisp/crisp.service';
 
 @Injectable()
 export class ConversationsService {
@@ -13,17 +14,17 @@ export class ConversationsService {
     private readonly crisp: CrispService,
     @InjectQueue('conversations')
     private readonly conversationsQueue: Queue,
-    private readonly openaiAgentsService: OpenaiAgentsService,
+    private readonly classifyAgent: ClassifyConversationFlow,
   ) {}
 
-  newConversation(_labels: string[]) {
-    return this.conversationsQueue.add('new-conversation', {
-      labels: _labels,
+  newConversation(conversation_id: string) {
+    return this.conversationsQueue.add(CONVERSATIONS_JOBS.NEW_CONVERSATION, {
+      conversation_id,
     });
   }
 
-  getConversations(limit?: number) {
-    return this.crisp.getConversations(limit);
+  getConversations() {
+    return this.crisp.getConversations();
   }
 
   getConversationMessages(conversationId: string) {
@@ -31,9 +32,9 @@ export class ConversationsService {
   }
 
   async processConversation(_data: { labels: string[] }) {
-    const res = await this.openaiAgentsService.getLabelFromConverationAgent(
-      JSON.stringify(mockConversationClean || []),
-    );
+    const res = await this.classifyAgent.execute({
+      transcript: JSON.stringify(mockConversationClean || []),
+    });
     return res;
   }
 }

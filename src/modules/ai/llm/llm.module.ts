@@ -1,10 +1,16 @@
 import { Module } from '@nestjs/common';
 
-import { AlbertModel } from './albert/albert.model';
-import { OpenaiService } from './openai/openai.service';
+import { CHAT_MODEL } from '../core/tokens';
+
+import { AlbertChat } from './albert/albert.chat';
+import { OpenAIChat } from './openai/openai.chat';
 
 @Module({
-  providers: [AlbertModel, OpenaiService],
-  exports: [AlbertModel, OpenaiService],
+  providers: [
+    OpenAIChat,
+    AlbertChat,
+    { provide: CHAT_MODEL, useExisting: AlbertChat },
+  ],
+  exports: [OpenAIChat, AlbertChat, CHAT_MODEL],
 })
 export class LlmModule {}

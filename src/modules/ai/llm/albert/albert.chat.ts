@@ -2,12 +2,18 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
 
+import {
+  ChatMessage,
+  ChatModel,
+  ChatOptions,
+} from '../../core/chat-model.interface';
+
 import { ALBERT_MODELS, AlbertChatCompletionRequest } from './albert.interface';
 
 import { Env } from '@/core/config/app/app.schema.config';
 
 @Injectable()
-export class AlbertService {
+export class AlbertChat implements ChatModel {
   private readonly albertApi: AxiosInstance;
   private readonly model: string;
 
@@ -22,15 +28,19 @@ export class AlbertService {
     this.model = ALBERT_MODELS.albert_small.id;
   }
 
-  async complete(message: string): Promise<string> {
+  async chat(
+    messages: ChatMessage[],
+    _opts?: ChatOptions,
+  ): Promise<{ content: string }> {
     const request: AlbertChatCompletionRequest = {
-      messages: [{ role: 'user', content: message }],
+      messages,
       model: this.model,
+      response_format: { type: 'json_object' },
     };
 
     try {
       const response = await this.albertApi.post('/chat/completions', request);
-      return response.data.choices[0].message.content;
+      return { content: response.data.choices[0].message.content };
     } catch (error) {
       console.error('Albert Chat API error:', error);
       throw new Error(
@@ -39,10 +49,5 @@ export class AlbertService {
         }`,
       );
     }
-  }
-
-  async getModels(): Promise<string[]> {
-    const response = await this.albertApi.get('/models');
-    return response.data.data;
   }
 }

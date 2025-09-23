@@ -18,10 +18,9 @@ export class CrispService {
     });
   }
 
-  async getConversations(limit?: number) {
+  async getConversations() {
     const response = await this.crispApi.get('/conversations', {
       params: {
-        limit,
         filter_resolved: 1,
       },
     });
