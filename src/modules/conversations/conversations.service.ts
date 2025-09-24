@@ -3,8 +3,8 @@ import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
 
 import { CONVERSATIONS_JOBS } from './conversations.job';
+import { splitFullConversationToDiscussion } from './utils/split-full-conversation-to-discussion.util';
 
-import { mockConversationClean } from '@/common/mocks/mock-data-clean.hide';
 import { ClassifyConversationFlow } from '@/modules/ai/flows/classify-conversation.flow';
 import { CrispService } from '@/modules/crisp/crisp.service';
 
@@ -17,8 +17,8 @@ export class ConversationsService {
     private readonly classifyAgent: ClassifyConversationFlow,
   ) {}
 
-  newConversation(conversation_id: string) {
-    return this.conversationsQueue.add(CONVERSATIONS_JOBS.NEW_CONVERSATION, {
+  async newConversation(conversation_id: string) {
+    await this.conversationsQueue.add(CONVERSATIONS_JOBS.NEW_CONVERSATION, {
       conversation_id,
     });
   }
@@ -31,10 +31,16 @@ export class ConversationsService {
     return this.crisp.getConversationMessages(conversationId);
   }
 
-  async processConversation(_data: { labels: string[] }) {
-    const res = await this.classifyAgent.execute({
-      transcript: JSON.stringify(mockConversationClean || []),
-    });
-    return res;
+  async processConversation(data: { conversation_id: string }) {
+    const conversation = await this.crisp.getConversationMessages(
+      data.conversation_id,
+    );
+    const discussions = splitFullConversationToDiscussion(conversation.data);
+    if (discussions.conversations.length > 0) {
+      await this.classifyAgent.execute({
+        transcript: JSON.stringify(discussions),
+      });
+    }
+    return { status: 'ok' };
   }
 }

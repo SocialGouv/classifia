@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+} from '@nestjs/common';
 
 import { ConversationsService } from './conversations.service';
 import { NewConversationDto } from './dto/new-conversation.dto';
@@ -7,8 +15,9 @@ import { NewConversationDto } from './dto/new-conversation.dto';
 export class ConversationsController {
   constructor(private readonly conversationsService: ConversationsService) {}
 
+  @HttpCode(HttpStatus.CREATED)
   @Post()
-  newConversation(@Body() body: NewConversationDto) {
+  async newConversation(@Body() body: NewConversationDto) {
     return this.conversationsService.newConversation(body.conversation_id);
   }
 

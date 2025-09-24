@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
 
+import { CrispConversationResponse } from './crisp.interface';
+
 import type { Env } from '@core/config/app/app.schema.config';
 
 @Injectable()
@@ -27,7 +29,9 @@ export class CrispService {
     return response.data;
   }
 
-  async getConversationMessages(conversationId: string) {
+  async getConversationMessages(
+    conversationId: string,
+  ): Promise<CrispConversationResponse> {
     const response = await this.crispApi.get(
       `/conversation/${conversationId}/messages`,
     );

@@ -21,6 +21,7 @@ services:
       retries: 5
     networks:
       - vae-crisp-network
+    restart: always
 
   # Redis for BullMQ
   redis:
@@ -37,6 +38,7 @@ services:
       retries: 5
     networks:
       - vae-crisp-network
+    restart: always
 
 volumes:
   postgres_data:

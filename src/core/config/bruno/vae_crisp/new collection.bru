@@ -6,8 +6,12 @@ meta {
 
 post {
   url: {{base_url}}/conversations
-  body: none
+  body: formUrlEncoded
   auth: inherit
+}
+
+body:form-urlencoded {
+  conversation_id: {{conversation_id}}
 }
 
 settings {

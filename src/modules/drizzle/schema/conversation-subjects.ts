@@ -7,26 +7,26 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { conversationsTable } from './conversations';
-import { labelsTable } from './labels';
+import { subjectsTable } from './subjects';
 
-export const conversationLabelsTable = pgTable(
+export const conversationSubjectsTable = pgTable(
   'conversation_labels',
   {
     id: uuid().primaryKey().defaultRandom(),
     conversationId: uuid('conversation_id')
       .notNull()
       .references(() => conversationsTable.id),
-    labelId: uuid('label_id')
+    subjectId: uuid('subject_id')
       .notNull()
-      .references(() => labelsTable.id),
+      .references(() => subjectsTable.id),
     confidence: doublePrecision('confidence'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
   },
   (table) => [
     {
-      conversationLabelUnique: uniqueIndex(
-        'conversation_labels_conversation_label_unq',
-      ).on(table.conversationId, table.labelId),
+      conversationSubjectUnique: uniqueIndex(
+        'conversation_labels_conversation_subject_unq',
+      ).on(table.conversationId, table.subjectId),
     },
   ],
 );

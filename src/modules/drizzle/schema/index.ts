@@ -1,3 +1,3 @@
-export * from './conversation-labels';
+export * from './conversation-subjects';
 export * from './conversations';
-export * from './labels';
+export * from './subjects';

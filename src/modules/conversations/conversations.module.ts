@@ -7,8 +7,8 @@ import { DrizzleModule } from '../drizzle/drizzle.module';
 
 import { ConversationsController } from './conversations.controller';
 import { CONVERSATIONS_QUEUE } from './conversations.job';
-import { ConversationsProcessor } from './conversations.processor';
 import { ConversationsService } from './conversations.service';
+import { NewConversationProcessor } from './processors';
 
 @Module({
   imports: [
@@ -20,6 +20,6 @@ import { ConversationsService } from './conversations.service';
     }),
   ],
   controllers: [ConversationsController],
-  providers: [ConversationsService, ConversationsProcessor],
+  providers: [ConversationsService, NewConversationProcessor],
 })
 export class ConversationsModule {}
