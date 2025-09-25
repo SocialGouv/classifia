@@ -1,11 +1,11 @@
-export type Message = {
+export type ConversationMessage = {
   from: string;
   content: string;
 };
 
 export type Conversation = {
   timestamp: number;
-  messages: Message[];
+  messages: ConversationMessage[];
 };
 
 export type FullConversation = {
@@ -16,7 +16,7 @@ export type FullConversation = {
 export type ClassifiedConversation = {
   timestamp: number;
   description: string;
-  embedding: number[];
+  confidence: number;
 };
 
 export type ClassifyOutput = {

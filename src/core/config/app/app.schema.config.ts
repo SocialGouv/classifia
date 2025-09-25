@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
 
 export const configValidationSchema = z.object({
@@ -34,7 +35,9 @@ export type Env = z.infer<typeof configValidationSchema>;
 export function validateConfig<T extends Record<string, unknown>>(env: T): Env {
   const parsed = configValidationSchema.safeParse(env);
   if (!parsed.success) {
-    throw new Error(parsed.error.message);
+    throw new BadRequestException(
+      `Configuration validation failed: ${parsed.error.message}`,
+    );
   }
   return parsed.data;
 }

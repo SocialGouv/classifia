@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1758796923001,
+      "tag": "0000_create_subjects_conversations_conversation_subjects",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1758799656519,
+      "tag": "0001_update_vector_dimension",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1758803705660,
+      "tag": "0002_save_date_conversation",
+      "breakpoints": true
+    }
+  ]
+}

@@ -21,6 +21,7 @@ export const conversationSubjectsTable = pgTable(
       .references(() => subjectsTable.id),
     confidence: doublePrecision('confidence'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
+    conversationTimestamp: timestamp('conversation_timestamp').notNull(),
   },
   (table) => [
     {

@@ -28,8 +28,8 @@ export class AlbertEmbedding {
     const response = await this.albertApi.post('/embeddings', {
       input: text,
       model: this.model,
-      dimensions: 1536,
+      dimensions: 1024,
     });
-    return response.data;
+    return response.data.data.map((item: any) => item.embedding);
   }
 }

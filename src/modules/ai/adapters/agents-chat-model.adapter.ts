@@ -1,4 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { assistant, Usage } from '@openai/agents';
 
 import { CHAT_MODEL } from '../core/tokens';
@@ -13,6 +18,7 @@ import type {
 
 @Injectable()
 export class AgentsChatModelAdapter implements Model {
+  private readonly logger = new Logger(AgentsChatModelAdapter.name);
   name = 'chat-model-adapter';
   constructor(@Inject(CHAT_MODEL) private readonly model: ChatModel) {}
 
@@ -51,8 +57,12 @@ export class AgentsChatModelAdapter implements Model {
 
     const content = res?.content || '';
     if (!content) {
-      console.error('No content received from chat model, response:', res);
-      throw new Error('No content received from chat model');
+      this.logger.error('No content received from chat model', {
+        response: res,
+      });
+      throw new InternalServerErrorException(
+        'No content received from chat model',
+      );
     }
 
     return { output: [assistant(content)], usage: new Usage() };

@@ -1,4 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
 
@@ -14,6 +19,7 @@ import { Env } from '@/core/config/app/app.schema.config';
 
 @Injectable()
 export class AlbertChat implements ChatModel {
+  private readonly logger = new Logger(AlbertChat.name);
   private readonly albertApi: AxiosInstance;
   private readonly model: string;
 
@@ -42,12 +48,31 @@ export class AlbertChat implements ChatModel {
       const response = await this.albertApi.post('/chat/completions', request);
       return { content: response.data.choices[0].message.content };
     } catch (error) {
-      console.error('Albert Chat API error:', error);
-      throw new Error(
-        `Failed to complete chat: ${
-          error instanceof Error ? error.message : 'Unknown error'
-        }`,
+      this.logger.error(
+        'Albert Chat API error',
+        error instanceof Error ? error.stack : error,
       );
+
+      // Handle different types of errors appropriately
+      if (error.response?.status >= 500) {
+        throw new ServiceUnavailableException(
+          `Albert Chat API is currently unavailable: ${
+            error instanceof Error ? error.message : 'Unknown error'
+          }`,
+        );
+      } else if (error.response?.status >= 400) {
+        throw new InternalServerErrorException(
+          `Albert Chat API request failed: ${
+            error instanceof Error ? error.message : 'Unknown error'
+          }`,
+        );
+      } else {
+        throw new InternalServerErrorException(
+          `Failed to complete chat: ${
+            error instanceof Error ? error.message : 'Unknown error'
+          }`,
+        );
+      }
     }
   }
 }

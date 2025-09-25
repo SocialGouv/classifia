@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { Agent, run } from '@openai/agents';
 import z from 'zod';
 
@@ -8,6 +12,7 @@ import { AgentsChatModelAdapter } from '@/modules/ai/adapters/agents-chat-model.
 
 @Injectable()
 export class ClassifyAgent {
+  private readonly logger = new Logger(ClassifyAgent.name);
   constructor(private readonly model: AgentsChatModelAdapter) {}
 
   async classify(transcript: string) {
@@ -21,7 +26,8 @@ export class ClassifyAgent {
           conversations: z.array(
             z.object({
               timestamp: z.number(),
-              description: z.string(),
+              description: z.string().max(100).min(3).or(z.literal('SKIP')),
+              confidence: z.number(),
             }),
           ),
         }),
@@ -30,8 +36,15 @@ export class ClassifyAgent {
       const output = res?.finalOutput ?? res?.output?.[0]?.content ?? '';
       return output;
     } catch (error) {
-      console.error('Error classifying conversation:', error);
-      throw error;
+      this.logger.error(
+        'Error classifying conversation',
+        error instanceof Error ? error.stack : error,
+      );
+      throw new InternalServerErrorException(
+        `Error classifying conversation: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      );
     }
   }
 }

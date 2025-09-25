@@ -1,6 +1,7 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { LoggerModule } from 'nestjs-pino';
 
 import { validateConfig } from './core/config/app/app.schema.config';
 import { AiModule } from './modules/ai/ai.module';
@@ -14,6 +15,40 @@ import { DrizzleModule } from './modules/drizzle/drizzle.module';
       isGlobal: true,
       cache: true,
       validate: validateConfig,
+    }),
+    LoggerModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        pinoHttp: {
+          level:
+            configService.get('NODE_ENV') === 'production' ? 'info' : 'debug',
+          transport:
+            configService.get('NODE_ENV') === 'development'
+              ? {
+                  target: 'pino-pretty',
+                  options: {
+                    colorize: true,
+                    translateTime: 'SYS:standard',
+                    ignore: 'pid,hostname',
+                  },
+                }
+              : undefined,
+          serializers: {
+            req: (req) => ({
+              method: req.method,
+              url: req.url,
+              headers: {
+                host: req.headers.host,
+                'user-agent': req.headers['user-agent'],
+              },
+            }),
+            res: (res) => ({
+              statusCode: res.statusCode,
+            }),
+          },
+        },
+      }),
+      inject: [ConfigService],
     }),
     BullModule.forRootAsync({
       imports: [ConfigModule],

@@ -1,8 +1,8 @@
 import {
   Conversation,
+  ConversationMessage,
   FullConversation,
-  Message,
-} from '../interfaces/conversation.interface';
+} from '../types/conversation.types';
 
 import { CrispConversationMessages } from '@/modules/crisp/crisp.interface';
 
@@ -24,7 +24,7 @@ export const splitFullConversationToDiscussion = (
         };
       }
 
-      const messageData: Message = {
+      const messageData: ConversationMessage = {
         from: message.from,
         content: message.content,
       };
