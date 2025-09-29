@@ -1,6 +1,7 @@
 import {
   doublePrecision,
   pgTable,
+  text,
   timestamp,
   uniqueIndex,
   uuid,
@@ -22,12 +23,18 @@ export const conversationSubjectsTable = pgTable(
     confidence: doublePrecision('confidence'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     conversationTimestamp: timestamp('conversation_timestamp').notNull(),
+    conversationHash: text('conversation_hash').notNull(),
   },
   (table) => [
     {
       conversationSubjectUnique: uniqueIndex(
         'conversation_labels_conversation_subject_unq',
       ).on(table.conversationId, table.subjectId),
+    },
+    {
+      conversationHashUnique: uniqueIndex(
+        'conversation_labels_conversation_hash_unq',
+      ).on(table.conversationHash),
     },
   ],
 );

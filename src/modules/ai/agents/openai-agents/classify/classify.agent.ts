@@ -23,13 +23,11 @@ export class ClassifyAgent {
         model: this.model,
         outputType: z.object({
           session_id: z.string(),
-          conversations: z.array(
-            z.object({
-              timestamp: z.number(),
-              description: z.string().max(100).min(3).or(z.literal('SKIP')),
-              confidence: z.number(),
-            }),
-          ),
+          conversation: z.object({
+            timestamp: z.number(),
+            description: z.string().max(100).min(3).or(z.literal('SKIP')),
+            confidence: z.number(),
+          }),
         }),
       });
       const res = await run(agent, transcript);

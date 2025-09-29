@@ -22,6 +22,13 @@
       "when": 1758803705660,
       "tag": "0002_save_date_conversation",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1759172750150,
+      "tag": "0003_add_conversation_hash",
+      "breakpoints": true
     }
   ]
 }

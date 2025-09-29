@@ -48,9 +48,5 @@ export const splitFullConversationToDiscussion = (
     }
   }
 
-  if (currentConversation && currentConversation.messages.length > 0) {
-    fullConversation.conversations.push(currentConversation);
-  }
-
   return fullConversation;
 };

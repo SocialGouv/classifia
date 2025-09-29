@@ -21,5 +21,5 @@ export type ClassifiedConversation = {
 
 export type ClassifyOutput = {
   session_id: string;
-  conversations: ClassifiedConversation[];
+  conversation: ClassifiedConversation;
 };

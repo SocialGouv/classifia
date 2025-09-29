@@ -61,11 +61,13 @@ export class DrizzleService {
     subjectId,
     confidence,
     conversationTimestamp,
+    conversationHash,
   }: {
     conversationId: string;
     subjectId: string;
     confidence: number;
     conversationTimestamp: Date;
+    conversationHash: string;
   }) {
     const [conversationSubject] = await this.db
       .insert(schema.conversationSubjectsTable)
@@ -74,6 +76,7 @@ export class DrizzleService {
         subjectId,
         confidence,
         conversationTimestamp,
+        conversationHash,
       })
       .returning();
     return conversationSubject;
@@ -149,5 +152,16 @@ export class DrizzleService {
       .returning();
 
     return result[0];
+  }
+
+  async getConversationSubjectByDiscussionHash(conversationHash: string) {
+    const [row] = await this.db
+      .select()
+      .from(schema.conversationSubjectsTable)
+      .where(
+        eq(schema.conversationSubjectsTable.conversationHash, conversationHash),
+      )
+      .limit(1);
+    return row;
   }
 }

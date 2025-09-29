@@ -5,9 +5,19 @@ meta {
 }
 
 get {
-  url: {{base_url}}/conversations
+  url: {{base_url}}/conversations?filter_resolved=1
   body: none
   auth: inherit
+}
+
+params:query {
+  filter_resolved: 1
+}
+
+script:post-response {
+  const response = res.body.data
+  const session_ids = response.map((r)=>r.session_id)
+  console.log('REPONSE> ',session_ids)
 }
 
 settings {

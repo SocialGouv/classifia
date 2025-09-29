@@ -144,207 +144,144 @@ export class ConversationsService {
         }
       }
 
-      let classificationResult: ClassifyOutput;
-      try {
-        classificationResult = await this.classifyAgent.classify(
-          JSON.stringify(discussions),
-        );
-      } catch (error) {
-        this.logger.error(
-          'Error classifying conversation',
-          error instanceof Error ? error.stack : error,
-        );
-        throw new InternalServerErrorException(
-          `Failed to classify conversation: ${
-            error instanceof Error ? error.message : 'Unknown error'
-          }`,
-        );
-      }
+      // Process each resolved discussion individually; ignore duplicates by conversationHash
+      const finalConversations: any[] = [];
 
-      const descriptions = classificationResult.conversations
-        .filter((conv) => conv.description !== 'SKIP')
-        .map((conv) => conv.description.toLowerCase());
+      for (const discussion of discussions.conversations) {
+        const conversationHash = createHash('sha256')
+          .update(JSON.stringify(discussion))
+          .digest('hex');
 
-      let embeddings;
-      try {
-        embeddings =
-          descriptions.length > 0
-            ? await this.embedding.embed(descriptions)
-            : [];
-      } catch (error) {
-        this.logger.error(
-          'Error generating embeddings',
-          error instanceof Error ? error.stack : error,
-        );
-        throw new InternalServerErrorException(
-          `Failed to generate embeddings: ${
-            error instanceof Error ? error.message : 'Unknown error'
-          }`,
-        );
-      }
+        // If hash exists, strictly ignore (no DB write)
+        const already =
+          await this.drizzleService.getConversationSubjectByDiscussionHash(
+            conversationHash,
+          );
+        if (already) {
+          continue;
+        }
 
-      const classifiedConversations = await Promise.all(
-        classificationResult.conversations.map(async (conv, index) => {
-          if (conv.description === 'SKIP') {
-            return {
-              ...conv,
-              embedding: null,
-              confidence: 0.1,
-              subjectId: null,
-              action: 'skip_classification',
-            };
-          }
+        // Classify single discussion
+        let classification: ClassifyOutput;
+        try {
+          classification = await this.classifyAgent.classify(
+            JSON.stringify({
+              session_id: discussions.session_id,
+              conversation: discussion,
+            }),
+          );
+        } catch (error) {
+          this.logger.error(
+            'Error classifying single discussion',
+            error instanceof Error ? error.stack : error,
+          );
+          throw new InternalServerErrorException(
+            `Failed to classify discussion: ${
+              error instanceof Error ? error.message : 'Unknown error'
+            }`,
+          );
+        }
 
-          // Calculate embedding index for non-SKIP conversations
-          const embeddingIndex = classificationResult.conversations
-            .slice(0, index)
-            .filter((c) => c.description !== 'SKIP').length;
+        const conv = classification.conversation;
 
-          const embedding: number[] = embeddings[embeddingIndex];
+        if (conv.description === 'SKIP') {
+          // Persist SKIP with skip subject
+          const skipSubject =
+            await this.drizzleService.getOrCreateSkipSubject();
+          await this.drizzleService.createConversationSubject({
+            conversationId: dbConversation.id,
+            subjectId: skipSubject.id,
+            confidence: conv.confidence || 0.1,
+            conversationTimestamp: new Date(conv.timestamp),
+            conversationHash,
+          });
+          finalConversations.push({
+            ...conv,
+            embedding: null,
+            subjectId: skipSubject.id,
+            action: 'skip_classification',
+          });
+          continue;
+        }
 
-          if (!embedding || embedding.length === 0) {
-            return {
-              ...conv,
-              embedding,
-              confidence: 0,
-              subjectId: null,
-              action: 'no_embedding',
-            };
-          }
+        // Embed and map to subject
+        const [vec] = await this.embedding.embed([
+          conv.description.toLowerCase(),
+        ]);
+        const embeddingVec = vec as number[];
 
-          let similarSubjects;
-          try {
-            similarSubjects = await this.drizzleService.findSimilarSubjects(
-              embedding,
-              SIMILARITY_THRESHOLDS.SUGGEST_GROUPING,
-            );
-          } catch (error) {
-            this.logger.error(
-              'Error finding similar subjects',
-              error instanceof Error ? error.stack : error,
-            );
-            throw new InternalServerErrorException(
-              `Failed to find similar subjects: ${
-                error instanceof Error ? error.message : 'Unknown error'
-              }`,
-            );
-          }
+        let similarSubjects;
+        try {
+          similarSubjects = await this.drizzleService.findSimilarSubjects(
+            embeddingVec,
+            SIMILARITY_THRESHOLDS.SUGGEST_GROUPING,
+          );
+        } catch (error) {
+          this.logger.error(
+            'Error finding similar subjects',
+            error instanceof Error ? error.stack : error,
+          );
+          throw new InternalServerErrorException(
+            `Failed to find similar subjects: ${
+              error instanceof Error ? error.message : 'Unknown error'
+            }`,
+          );
+        }
 
-          if (similarSubjects.length === 0) {
-            return {
-              ...conv,
-              embedding,
-              confidence: 1.0,
-              subjectId: null,
-              action: 'create_new_subject',
-            };
-          }
+        let finalSubjectId: string | null = null;
+        let finalAction: ClassificationAction = 'create_new_subject';
+        let confidence = 1.0;
 
+        if (similarSubjects.length > 0) {
           const bestMatch = similarSubjects[0];
-          const confidence = bestMatch.similarity;
-
-          let action: ClassificationAction;
+          confidence = bestMatch.similarity;
           if (confidence >= SIMILARITY_THRESHOLDS.REUSE_EXISTING) {
-            action = 'reuse_existing';
+            finalAction = 'reuse_existing';
+            finalSubjectId = bestMatch.id;
           } else if (confidence >= SIMILARITY_THRESHOLDS.SUGGEST_GROUPING) {
-            action = 'suggest_grouping';
-          } else {
-            action = 'create_new_subject';
+            finalAction = 'suggest_grouping';
+            finalSubjectId = bestMatch.id;
           }
+        }
 
-          return {
-            ...conv,
-            embedding,
-            confidence,
-            subjectId: bestMatch.id,
-            action,
-          };
-        }),
-      );
+        if (finalAction === 'suggest_grouping' && finalSubjectId) {
+          const aliasSubject = await this.drizzleService.createSubject(
+            conv.description,
+            embeddingVec,
+            finalSubjectId,
+          );
+          finalSubjectId = aliasSubject.id;
+          finalAction = 'created_alias_subject';
+        } else if (finalAction === 'reuse_existing' && finalSubjectId) {
+          finalAction = 'reused_existing_subject';
+        } else if (finalAction === 'create_new_subject') {
+          const newSubject = await this.drizzleService.createSubject(
+            conv.description,
+            embeddingVec,
+          );
+          finalSubjectId = newSubject.id;
+          finalAction = 'created_new_subject';
+        }
 
-      const finalConversations = await Promise.all(
-        classifiedConversations.map(async (conv) => {
-          let finalSubjectId = conv.subjectId;
-          let finalAction = conv.action;
+        await this.drizzleService.createConversationSubject({
+          conversationId: dbConversation.id,
+          subjectId: finalSubjectId as string,
+          confidence,
+          conversationTimestamp: new Date(conv.timestamp),
+          conversationHash,
+        });
 
-          if (conv.action === 'reuse_existing') {
-            finalAction = 'reused_existing_subject';
-          } else if (conv.action === 'suggest_grouping') {
-            try {
-              const aliasSubject = await this.drizzleService.createSubject(
-                conv.description,
-                conv.embedding as number[],
-                conv.subjectId,
-              );
-              finalSubjectId = aliasSubject.id;
-              finalAction = 'created_alias_subject';
-            } catch (error) {
-              this.logger.error(
-                'Error creating alias subject',
-                error instanceof Error ? error.stack : error,
-              );
-              throw new InternalServerErrorException(
-                `Failed to create alias subject: ${
-                  error instanceof Error ? error.message : 'Unknown error'
-                }`,
-              );
-            }
-          } else if (
-            conv.action === 'create_new_subject' &&
-            conv.embedding &&
-            conv.embedding.length > 0
-          ) {
-            try {
-              const newSubject = await this.drizzleService.createSubject(
-                conv.description,
-                conv.embedding,
-              );
-              finalSubjectId = newSubject.id;
-              finalAction = 'created_new_subject';
-            } catch (error) {
-              this.logger.error(
-                'Error creating new subject',
-                error instanceof Error ? error.stack : error,
-              );
-              throw new InternalServerErrorException(
-                `Failed to create new subject: ${
-                  error instanceof Error ? error.message : 'Unknown error'
-                }`,
-              );
-            }
-          }
-
-          if (finalSubjectId && conv.action !== 'skip_classification') {
-            try {
-              await this.drizzleService.createConversationSubject({
-                conversationId: dbConversation.id,
-                subjectId: finalSubjectId as string,
-                confidence: conv.confidence || 0,
-                conversationTimestamp: new Date(conv.timestamp),
-              });
-            } catch (error) {
-              this.logger.error(
-                'Error creating conversation subject',
-                error instanceof Error ? error.stack : error,
-              );
-              throw new InternalServerErrorException(
-                `Failed to create conversation subject: ${
-                  error instanceof Error ? error.message : 'Unknown error'
-                }`,
-              );
-            }
-          }
-
-          return {
-            ...conv,
-            subjectId: finalSubjectId,
-            action: finalAction,
-          };
-        }),
-      );
+        finalConversations.push({
+          ...conv,
+          embedding: embeddingVec,
+          subjectId: finalSubjectId,
+          action: finalAction,
+          confidence,
+        });
+      }
 
       const result = {
-        session_id: classificationResult.session_id,
+        session_id: discussions.session_id,
         conversations: finalConversations,
         conversation_id: dbConversation.id,
       };

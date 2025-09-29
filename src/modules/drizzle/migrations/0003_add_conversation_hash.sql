@@ -1,0 +1,1 @@
+ALTER TABLE "conversation_labels" ADD COLUMN "conversation_hash" text NOT NULL;
