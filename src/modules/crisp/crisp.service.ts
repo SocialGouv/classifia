@@ -4,7 +4,7 @@ import axios, { AxiosInstance } from 'axios';
 
 import { CrispConversationResponse } from './crisp.interface';
 
-import type { Env } from '@core/config/app/app.schema.config';
+import type { Env } from '@/core/config/app.schema.config';
 
 @Injectable()
 export class CrispService {

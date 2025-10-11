@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { Queue } from 'bullmq';
 
-import { ClassifyAgent } from '../ai/agents/openai-agents/classify/classify.agent';
+import { ClassifyConversationVercelAiAgent } from '../ai/agents/classify-conversation/classify-conversation.vercel-ai';
 import { AlbertEmbedding } from '../ai/llm/albert/albert.embedding';
 import { DrizzleService } from '../drizzle/drizzle.service';
 
@@ -32,7 +32,7 @@ export class ConversationsService {
     private readonly crisp: CrispService,
     @InjectQueue('conversations')
     private readonly conversationsQueue: Queue,
-    private readonly classifyAgent: ClassifyAgent,
+    private readonly classifyConversationAgent: ClassifyConversationVercelAiAgent,
     private readonly embedding: AlbertEmbedding,
     private readonly drizzleService: DrizzleService,
   ) {}
@@ -164,7 +164,7 @@ export class ConversationsService {
         // Classify single discussion
         let classification: ClassifyOutput;
         try {
-          classification = await this.classifyAgent.classify(
+          classification = await this.classifyConversationAgent.classify(
             JSON.stringify({
               session_id: discussions.session_id,
               conversation: discussion,

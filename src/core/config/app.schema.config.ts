@@ -12,8 +12,6 @@ export const configValidationSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']),
   PORT: z.coerce.number().int().positive(),
 
-  // OPENAI_API_KEY: z.string().min(1),
-
   CRISP_WEBHOOK_SECRET: z.string().min(1),
   CRISP_API_KEY: z.string().min(1),
   CRISP_URL: z.url(),

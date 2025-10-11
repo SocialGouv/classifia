@@ -1,13 +1,37 @@
 import { Module } from '@nestjs/common';
 
-import { AgentsChatModelAdapter } from '../adapters/agents-chat-model.adapter';
+import { LangChainChatModelAdapter } from '../adapters/langchain-chat-model.adapter';
+import { OpenaiAgentsChatModelAdapter } from '../adapters/openai-agents-chat-model.adapter';
+import { VercelAiChatModelAdapter } from '../adapters/vercel-ai-chat-model.adapter';
+import { VoltAgentChatModelAdapter } from '../adapters/voltagent-chat-model.adapter';
 import { LlmModule } from '../llm/llm.module';
 
-import { ClassifyAgent } from './openai-agents/classify/classify.agent';
+import { ClassifyConversationLangGraphAgent } from './classify-conversation/classify-conversation.langgraph';
+import { ClassifyConversationOpenaiAgent } from './classify-conversation/classify-conversation.openai-agent';
+import { ClassifyConversationVercelAiAgent } from './classify-conversation/classify-conversation.vercel-ai';
+import { ClassifyConversationVoltAgent } from './classify-conversation/classify-conversation.voltagent';
 
 @Module({
-  providers: [ClassifyAgent, AgentsChatModelAdapter],
-  exports: [ClassifyAgent, AgentsChatModelAdapter],
+  providers: [
+    ClassifyConversationOpenaiAgent,
+    ClassifyConversationLangGraphAgent,
+    ClassifyConversationVoltAgent,
+    ClassifyConversationVercelAiAgent,
+    OpenaiAgentsChatModelAdapter,
+    LangChainChatModelAdapter,
+    VoltAgentChatModelAdapter,
+    VercelAiChatModelAdapter,
+  ],
+  exports: [
+    ClassifyConversationOpenaiAgent,
+    ClassifyConversationLangGraphAgent,
+    ClassifyConversationVoltAgent,
+    ClassifyConversationVercelAiAgent,
+    OpenaiAgentsChatModelAdapter,
+    LangChainChatModelAdapter,
+    VoltAgentChatModelAdapter,
+    VercelAiChatModelAdapter,
+  ],
   imports: [LlmModule],
 })
 export class AgentsModule {}

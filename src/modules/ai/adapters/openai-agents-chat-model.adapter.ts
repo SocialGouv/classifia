@@ -17,8 +17,8 @@ import type {
 } from '@openai/agents';
 
 @Injectable()
-export class AgentsChatModelAdapter implements Model {
-  private readonly logger = new Logger(AgentsChatModelAdapter.name);
+export class OpenaiAgentsChatModelAdapter implements Model {
+  private readonly logger = new Logger(OpenaiAgentsChatModelAdapter.name);
   name = 'chat-model-adapter';
   constructor(@Inject(CHAT_MODEL) private readonly model: ChatModel) {}
 

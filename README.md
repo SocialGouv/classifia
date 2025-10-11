@@ -1,245 +1,229 @@
-# 📊 Support Conversations Labeling System
+# VAE-CRISP: Conversation Classification System
 
-## 🎯 Objectif
+Automatic conversation classification service for Crisp support messages. Uses LLM-based analysis to categorize conversations into subjects/topics with vector similarity matching to identify recurring issues and generate analytics.
 
-Ce service catégorise automatiquement les conversations support (via Crisp) afin d’identifier les problématiques récurrentes et générer des statistiques fiables (tendances mensuelles, top sujets, etc.).
+## Tech Stack
 
-L’approche retenue est **Option 1 (delete/insert)** :
-à chaque reprocessing d’une conversation, on supprime les anciennes associations labels ↔ conversation, et on réinsère uniquement les labels extraits lors de la dernière analyse.
+- **Framework**: [NestJS](https://nestjs.com/) with [Fastify](https://www.fastify.io/)
+- **Language**: TypeScript
+- **LLM**: Albert API (French government AI) via Vercel AI SDK
+- **Queue**: [BullMQ](https://docs.bullmq.io/) with Redis
+- **Database**: PostgreSQL 16+ with [Drizzle ORM](https://orm.drizzle.team/)
+- **Vector Store**: [pgvector](https://github.com/pgvector/pgvector)
+- **Security**: SHA256 hashing, no plaintext message storage
 
----
+## Quick Start
 
-## 🏗️ Stack Technique
+### Prerequisites
 
-- **Framework** : [NestJS](https://nestjs.com/) avec [Fastify](https://www.fastify.io/) (rapide et léger).
-- **Langage** : TypeScript (strict mode).
-- **LLM Integration** : [openai-agents-js](https://openai.github.io/openai-agents-js/).
-- **Queue Processing** : [BullMQ](https://docs.bullmq.io/) + Redis (scalable, retries, rate limiting).
-- **Database** : PostgreSQL 15+.
-- **ORM** : [Drizzle ORM](https://orm.drizzle.team/) (migrations et typage).
-- **Vector Store** : [pgvector](https://github.com/pgvector/pgvector).
-- **Hashing** : SHA256 pour éviter les doublons.
-- **Sécurité** : aucun stockage des messages en clair, seulement hash et métadonnées utiles.
+- Node.js 20+
+- pnpm
+- Docker & Docker Compose
 
----
+### Installation
 
-## 🧩 Architecture
+1. Clone and install dependencies:
 
-- AiModule : agents via `AgentsModule` → `LlmModule` → `AlbertModel` (HTTP vers `ALBERT_URL`).
-- ConversationsModule : queue BullMQ `conversations` et worker `ConversationsProcessor` pour orchestrer le traitement.
-- CrispModule : client HTTP Crisp (`CRISP_URL`, `CRISP_API_KEY`).
-- DrizzleModule : provider PostgreSQL et schémas `conversations`, `labels`, `conversation_labels`.
-- Config : validation Zod des variables d'env (Redis, DB, Crisp, LLM, limites et seuils).
-
----
-
-## 🔒 Sécurité
-
-- **Pas de stockage du texte brut** (RGPD / confidentialité).
-- **Stockage minimal** : hash, conversation_id, labels.
-- **Chiffrement** : Redis + PostgreSQL sur connexions TLS.
-- **Monitoring** :
-  - Logs sur traitements LLM (mais pas sur contenu).
-  - Statut de job BullMQ (succès/échec).
-
----
-
-## ⚙️ Flows de l’application
-
-### 1. Webhook Crisp → API NestJS
-
-- Endpoint `/webhooks/crisp/conversation.closed`.
-- Payload minimal requis :
-  - `conversation_id`
-  - `messages[]` (texte brut concaténé + métadonnées)
-- Traitement :
-  1. Concaténer tous les messages (`role: user|support`) → texte complet.
-  2. Calculer `hash = sha256(conversation_id + texte complet compacté)`.
-  3. Vérifier si hash existe déjà en DB.
-     - Si **oui** → conversation déjà traitée → stop.
-     - Si **non** → push job dans BullMQ.
-
----
-
-### 2. Queue (BullMQ)
-
-- Queue `conversations` dans Redis.
-- Paramètres :
-  - `concurrency`: configurable (par défaut 5 workers).
-  - `attempts`: 3 (retry max).
-  - `backoff`: 30s exponential.
-  - `limiter`: 60 jobs/min pour limiter les appels LLM.
-
----
-
-### 3. Worker (BullMQ)
-
-- Étapes du worker :
-  1. Récupérer conversation complète depuis Crisp API (si besoin).
-  2. Vérifier encore hash en DB (idempotence).
-  3. Appeler `openai-agents-js` pour catégorisation.
-
----
-
-### 4. Traitement LLM
-
-- **Modèle recommandé** : `gpt-4o-mini` (équilibre coût/qualité).
-- **Token limit** :
-  - Compactage conversation → max 2k tokens.
-  - Si > 2k → tronquer les plus anciens messages (les + vieux sont moins pertinents).
-- **Prompt engineering** :
-  - Objectif : générer des **labels courts (1-3 mots)**.
-  - Règles :
-    - Ne jamais inventer des labels inutiles.
-    - Préférer des termes génériques : "paiement", "connexion", "commande".
-    - Entre 1 et 5 labels max par conversation.
-- **Similarité vectorielle** :
-  - Recherche via pgvector.
-  - Si `cosine_similarity >= 0.85` → réutiliser label existant.
-  - Si `0.70 ≤ similarity < 0.85` → proposer un regroupement (stocké en `alias_of` mais garder trace).
-  - Si `< 0.70` → créer un nouveau label.
-
----
-
-### 5. Mise à jour en base
-
-- Process delete/insert :
-  1. Supprimer toutes les entrées `conversation_labels` de la conv.
-  2. Pour chaque label généré :
-     - Vérifier similarité.
-     - Insérer nouveau label si nécessaire (embedding calculé une fois via `text-embedding-3-small`).
-     - Créer la liaison `conversation_labels`.
-
----
-
-### 6. Statistiques & Analyses
-
-- Exemple : top 10 labels du mois courant :
-
-  ```sql
-  SELECT l.name, COUNT(*) as count
-  FROM conversation_labels cl
-  JOIN labels l ON cl.label_id = l.id
-  WHERE cl.created_at >= DATE_TRUNC('month', NOW())
-  GROUP BY l.name
-  ORDER BY count DESC
-  LIMIT 10;
-  ```
-
-- Tendances sur 6 mois :
-
-```sql
-SELECT DATE_TRUNC('month', cl.created_at) as month, l.name, COUNT(*) as count
-FROM conversation_labels cl
-JOIN labels l ON cl.label_id = l.id
-GROUP BY month, l.name
-ORDER BY month DESC, count DESC;
+```bash
+pnpm install
 ```
 
----
+1. Copy environment variables:
 
-## 📉 Performance & Coût
+```bash
+cp .env.example .env
+# Edit .env with your actual credentials
+```
 
-### Volume attendu
+1. Start infrastructure (PostgreSQL + Redis):
 
-- **1k → 10k conversations/mois**.
+```bash
+pnpm docker:up
+```
 
-### LLM coût
+1. Run database migrations:
 
-- **gpt-4o-mini** ~0.06$/1k tokens (entrée) + ~0.24$/1k (sortie).
-- **Conversation moyenne** : 1k tokens → ~0.10$/conv.
-- **Pour 10k conv/mois** : ~1000$/mois.
+```bash
+pnpm db:push
+```
 
-### Optimisations
+1. Start development server:
 
-- **Batch par 5 conversations max** (si payload < 2k tokens).
-- **Utiliser gpt-4o-mini** sauf cas complexes → fallback gpt-4o.
+```bash
+pnpm start:dev
+```
 
----
+The API will be available at `http://localhost:3000`
 
-## ✅ Règles Importantes
+## Environment Variables
 
-### Similarité vectorielle
+See `.env.example` for all required configuration. Key variables:
 
-- **>= 0.85** : réutiliser label existant.
-- **0.70 – 0.85** : alias ou regroupement manuel si nécessaire.
-- **< 0.70** : nouveau label.
+- `ALBERT_API_KEY` - Albert LLM API key
+- `DATABASE_URL` - PostgreSQL connection string
+- `REDIS_HOST`, `REDIS_PORT` - Redis connection
+- `CRISP_API_KEY`, `CRISP_URL` - Crisp API credentials
+- `VECTOR_SIMILARITY_REUSE` - Threshold for reusing existing subjects (default: 0.85)
+- `VECTOR_SIMILARITY_ALIAS` - Threshold for creating subject aliases (default: 0.70)
 
-### Token limit
+## API Endpoints
 
-- **2000 tokens max** par appel.
-- **Si plus** → tronquer le début.
+### Health Check
 
-### Labels générés
+```http
+GET /health
+```
 
-- **1–5 max**.
-- **Toujours en minuscule**.
-- **Pas d'emojis ni ponctuation**.
+Returns service health status.
 
-### Idempotence
+### Conversations
 
-- **Toujours vérifier hash** avant traitement.
-- **Supprimer et réinsérer** labels liés à une conversation lors du reprocessing.
+```http
+GET /conversations
+```
 
----
+Fetch all conversations from Crisp.
 
-## 🛠️ Étapes de Réalisation de l'App
+```http
+GET /conversations/:conversation_id
+```
 
-### 1. Initialisation projet
+Fetch specific conversation messages.
 
-- NestJS + Fastify
-- Drizzle + migrations PostgreSQL
-- Redis + BullMQ
-- pgvector extension
+```http
+POST /conversations
+Body: { "conversation_id": "session_123" }
+```
 
-### 2. Webhook Crisp
+Queue a conversation for classification processing.
 
-- Endpoint `/webhooks/crisp/conversation.closed`
-- Compactage des messages
-- Hashing SHA256
+## Architecture
 
-### 3. Queue
+### Modules
 
-- BullMQ setup
-- Job processor `conversationsWorker`
+- **AiModule**: LLM integration and classification agents
+  - `AgentsModule`: Classification agent implementations
+  - `LlmModule`: Albert chat and embedding models
+  - Adapters: Vercel AI, LangChain, OpenAI Agents, VoltAgent
+- **ConversationsModule**: Core conversation processing logic
+  - Controller: HTTP endpoints
+  - Service: Business logic and classification orchestration
+  - Processors: BullMQ job workers
+- **CrispModule**: Crisp API client integration
 
-### 4. LLM agent
+- **DrizzleModule**: Database layer with PostgreSQL + pgvector
+  - Schemas: `conversations`, `subjects`, `conversation_subjects`
 
-- Implémentation avec openai-agents-js
-- Prompt engineering
-- Gestion token limit
+### Database Schema
 
-### 5. DB Layer
+#### conversations
 
-- Modèles Drizzle pour conversations, labels, conversation_labels
-- Méthodes insert/delete
-- Recherche vectorielle via pgvector
+- `id` (uuid, PK)
+- `crisp_conversation_id` (text, unique)
+- `text_hash` (text, unique) - SHA256 of conversation content
+- `created_at` (timestamp)
 
-### 6. Stats
+#### subjects
 
-- SQL queries pour top labels, tendances mensuelles
-- (Optionnel) API `/stats` exposée en REST/GraphQL
+- `id` (uuid, PK)
+- `name` (text, unique)
+- `embedding` (vector[1024]) - pgvector embedding
+- `alias_of` (uuid, FK) - References parent subject for aliases
+- `created_at` (timestamp)
 
-### 7. Monitoring
+#### conversation_subjects
 
-- Bull Board pour jobs BullMQ
-- Logs centralisés (pino + ELK ou Datadog)
+Join table linking conversations to subjects:
 
-### 8. Sécurité
+- `id` (uuid, PK)
+- `conversation_id` (uuid, FK)
+- `subject_id` (uuid, FK)
+- `confidence` (double) - Classification confidence score
+- `conversation_timestamp` (timestamp)
+- `conversation_hash` (text, unique) - Hash of discussion segment
+- `created_at` (timestamp)
 
-- Ne jamais loguer contenu des conversations
-- TLS activé
-- Secrets stockés en Vault / dotenv
+## Classification Flow
 
----
+1. **Receive conversation ID** via POST `/conversations`
+2. **Queue job** in BullMQ for async processing
+3. **Fetch messages** from Crisp API
+4. **Split into discussions** (continuous message exchanges)
+5. **Hash check** - Skip if discussion hash already processed
+6. **LLM classification** - Generate subject description
+7. **Vector similarity search** using pgvector:
+   - `>= 0.85` similarity: Reuse existing subject
+   - `0.70-0.85`: Create alias subject linked to parent
+   - `< 0.70`: Create new subject
+8. **Store association** in `conversation_subjects`
 
-## 🧪 Exemple complet
+### Deduplication Strategy
 
-**Conversation Crisp fermée** : "Je n'arrive pas à payer ma commande".
+- **Conversation level**: SHA256 hash of full conversation content
+- **Discussion level**: SHA256 hash of individual discussion segments
+- Ensures idempotency even when conversations are reprocessed
 
-1. **Webhook** → hash SHA256 généré.
-2. **Job ajouté** dans queue BullMQ.
-3. **Worker appelle LLM** → `["paiement", "commande"]`.
-4. **Recherche vectorielle** : les deux labels existent déjà → réutilisation.
-5. **Suppression** des anciennes entrées `conversation_labels` → insertion des nouvelles.
-6. **Statistiques mensuelles** prêtes via SQL.
+### Vector Similarity
+
+Uses cosine similarity via pgvector to match semantically similar subjects. Thresholds are configurable via environment variables.
+
+## Development
+
+```bash
+# Development with watch mode
+pnpm start:dev
+
+# Production build
+pnpm build
+pnpm start:prod
+
+# Run linter
+pnpm lint
+
+# Format code
+pnpm format
+
+# Database operations
+pnpm db:generate  # Generate migrations
+pnpm db:push      # Push schema changes
+pnpm db:studio    # Open Drizzle Studio
+```
+
+## Docker
+
+```bash
+# Start all services (PostgreSQL + Redis)
+pnpm docker:up
+
+# View logs
+pnpm docker:logs
+
+# Stop services
+pnpm docker:down
+
+# Clean volumes and restart
+pnpm docker:clean
+pnpm docker:up
+```
+
+## Production Deployment
+
+Build and run with Docker:
+
+```bash
+docker build -t vae-crisp .
+docker run -p 3000:3000 --env-file .env vae-crisp
+```
+
+Or use the provided `docker-compose.yml` for full stack deployment.
+
+## Security & Privacy
+
+- **No plaintext storage**: Messages are never stored, only hashes and metadata
+- **Confidentiality**: LLM prompts explicitly forbid PII in generated subjects
+- **Idempotency**: Hash-based deduplication prevents duplicate processing
+- **TLS**: All external connections should use TLS in production
+
+## License
+
+MIT

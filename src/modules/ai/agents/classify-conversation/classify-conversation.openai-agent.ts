@@ -6,20 +6,20 @@ import {
 import { Agent, run } from '@openai/agents';
 import z from 'zod';
 
-import { classifyPrompt } from './classify.prompt';
+import { classifyConversationPrompt } from './classify-conversation.prompt';
 
-import { AgentsChatModelAdapter } from '@/modules/ai/adapters/agents-chat-model.adapter';
+import { OpenaiAgentsChatModelAdapter } from '@/modules/ai/adapters/openai-agents-chat-model.adapter';
 
 @Injectable()
-export class ClassifyAgent {
-  private readonly logger = new Logger(ClassifyAgent.name);
-  constructor(private readonly model: AgentsChatModelAdapter) {}
+export class ClassifyConversationOpenaiAgent {
+  private readonly logger = new Logger(ClassifyConversationOpenaiAgent.name);
+  constructor(private readonly model: OpenaiAgentsChatModelAdapter) {}
 
   async classify(transcript: string) {
     try {
       const agent = new Agent({
-        name: 'thematicDescriptionAgent',
-        instructions: classifyPrompt,
+        name: 'classifyConversationAgent',
+        instructions: classifyConversationPrompt,
         model: this.model,
         outputType: z.object({
           session_id: z.string(),

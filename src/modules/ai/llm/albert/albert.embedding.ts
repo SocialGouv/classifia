@@ -6,7 +6,7 @@ import { ALBERT_MODELS } from './albert.interface';
 
 import type { AxiosInstance } from 'axios';
 
-import { Env } from '@/core/config/app/app.schema.config';
+import { Env } from '@/core/config/app.schema.config';
 
 @Injectable()
 export class AlbertEmbedding {

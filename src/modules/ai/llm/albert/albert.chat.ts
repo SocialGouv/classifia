@@ -15,7 +15,7 @@ import {
 
 import { ALBERT_MODELS, AlbertChatCompletionRequest } from './albert.interface';
 
-import { Env } from '@/core/config/app/app.schema.config';
+import { Env } from '@/core/config/app.schema.config';
 
 @Injectable()
 export class AlbertChat implements ChatModel {
@@ -53,7 +53,6 @@ export class AlbertChat implements ChatModel {
         error instanceof Error ? error.stack : error,
       );
 
-      // Handle different types of errors appropriately
       if (error.response?.status >= 500) {
         throw new ServiceUnavailableException(
           `Albert Chat API is currently unavailable: ${

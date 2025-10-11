@@ -3,13 +3,15 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 
-import { validateConfig } from './core/config/app/app.schema.config';
+import { AppController } from './app.controller';
+import { validateConfig } from './core/config/app.schema.config';
 import { AiModule } from './modules/ai/ai.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
 import { CrispModule } from './modules/crisp/crisp.module';
 import { DrizzleModule } from './modules/drizzle/drizzle.module';
 
 @Module({
+  controllers: [AppController],
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
