@@ -47,13 +47,11 @@ export class CrispService {
   }
 
   async webhookMessageUpdated(body: any) {
-    console.log('body', body);
     const conversationResolved =
       body.data.content.namespace === 'state:resolved';
 
     if (conversationResolved) {
       const conversationId = body.data.session_id;
-      console.log('conversationId', conversationId);
 
       await this.conversationsQueue.add(
         CONVERSATIONS_JOBS.PROCESS_CRISP_CONVERSATION,
