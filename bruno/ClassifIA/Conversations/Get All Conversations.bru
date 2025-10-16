@@ -1,7 +1,7 @@
 meta {
-  name: get all conversations
+  name: Get All Conversations
   type: http
-  seq: 2
+  seq: 1
 }
 
 get {
@@ -20,6 +20,16 @@ script:post-response {
   console.log('REPONSE> ',session_ids)
 }
 
+docs {
+  Récupère toutes les conversations depuis l'API Crisp.
+
+  Paramètres:
+  - filter_resolved (query): Filtre pour les conversations résolues (1 = oui, 0 = non)
+
+  Retourne une liste de conversations avec leurs session_ids.
+}
+
 settings {
   encodeUrl: true
 }
+

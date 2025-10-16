@@ -1,20 +1,20 @@
-# VAE-CRISP: Conversation Classification System
+# ClassifIA : Système de Classification de Conversations
 
-Automatic conversation classification service for Crisp support messages. Uses LLM-based analysis to categorize conversations into subjects/topics with vector similarity matching to identify recurring issues and generate analytics.
+**Projet Beta Gouv** - Service automatisé de classification de conversations pour les messages de support Crisp. Utilise l'analyse basée sur LLM pour catégoriser les conversations en sujets/thèmes avec correspondance de similarité vectorielle pour identifier les problèmes récurrents et générer des analyses.
 
-## Tech Stack
+## Stack Technique
 
-- **Framework**: [NestJS](https://nestjs.com/) with [Fastify](https://www.fastify.io/)
-- **Language**: TypeScript
-- **LLM**: Albert API (French government AI) via Vercel AI SDK
-- **Queue**: [BullMQ](https://docs.bullmq.io/) with Redis
-- **Database**: PostgreSQL 16+ with [Drizzle ORM](https://orm.drizzle.team/)
-- **Vector Store**: [pgvector](https://github.com/pgvector/pgvector)
-- **Security**: SHA256 hashing, no plaintext message storage
+- **Framework**: [NestJS](https://nestjs.com/) avec [Fastify](https://www.fastify.io/)
+- **Langage**: TypeScript
+- **LLM**: API Albert (IA du gouvernement français) via OpenAI Agents SDK
+- **File d'attente**: [BullMQ](https://docs.bullmq.io/) avec Redis
+- **Base de données**: PostgreSQL 16+ avec [Drizzle ORM](https://orm.drizzle.team/)
+- **Stockage vectoriel**: [pgvector](https://github.com/pgvector/pgvector)
+- **Sécurité**: Hachage SHA256, aucun stockage en texte clair
 
-## Quick Start
+## Démarrage Rapide
 
-### Prerequisites
+### Prérequis
 
 - Node.js 20+
 - pnpm
@@ -22,59 +22,62 @@ Automatic conversation classification service for Crisp support messages. Uses L
 
 ### Installation
 
-1. Clone and install dependencies:
+1. Cloner et installer les dépendances :
 
 ```bash
 pnpm install
 ```
 
-1. Copy environment variables:
+2. Configurer les variables d'environnement :
 
 ```bash
 cp .env.example .env
-# Edit .env with your actual credentials
+# Éditer .env avec vos identifiants réels
 ```
 
-1. Start infrastructure (PostgreSQL + Redis):
+3. Démarrer l'infrastructure (PostgreSQL + Redis) :
 
 ```bash
 pnpm docker:up
 ```
 
-1. Run database migrations:
+4. Exécuter les migrations de base de données :
 
 ```bash
 pnpm db:push
 ```
 
-1. Start development server:
+5. Démarrer le serveur de développement :
 
 ```bash
 pnpm start:dev
 ```
 
-The API will be available at `http://localhost:3000`
+L'API sera accessible sur `http://localhost:3000`
 
-## Environment Variables
+## Variables d'Environnement
 
-See `.env.example` for all required configuration. Key variables:
+Voir `.env.example` pour la configuration complète requise. Variables clés :
 
-- `ALBERT_API_KEY` - Albert LLM API key
-- `DATABASE_URL` - PostgreSQL connection string
-- `REDIS_HOST`, `REDIS_PORT` - Redis connection
-- `CRISP_API_KEY`, `CRISP_URL` - Crisp API credentials
-- `VECTOR_SIMILARITY_REUSE` - Threshold for reusing existing subjects (default: 0.85)
-- `VECTOR_SIMILARITY_ALIAS` - Threshold for creating subject aliases (default: 0.70)
+- **Albert LLM**: `ALBERT_API_KEY`, `ALBERT_URL`
+- **Base de données**: `DATABASE_URL` (PostgreSQL avec pgvector)
+- **Redis**: `REDIS_HOST`, `REDIS_PORT`
+- **Crisp API**: `CRISP_API_KEY`, `CRISP_URL`, `CRISP_WEBHOOK_SECRET`
+- **Seuils de similarité**: `VECTOR_SIMILARITY_REUSE` (0.85), `VECTOR_SIMILARITY_ALIAS` (0.70)
+- **BullMQ**: `BULLMQ_CONCURRENCY`, `BULLMQ_ATTEMPTS`, `BULLMQ_BACKOFF_DELAY`, `BULLMQ_RATE_LIMIT`
+- **Limites de traitement**: `MAX_TOKENS_PER_CONVERSATION`, `MAX_LABELS_PER_CONVERSATION`
 
-## API Endpoints
+Consultez le fichier `.env.example` pour la documentation détaillée de chaque variable.
 
-### Health Check
+## Points de Terminaison API
+
+### Vérification de Santé
 
 ```http
 GET /health
 ```
 
-Returns service health status.
+Retourne le statut de santé du service.
 
 ### Conversations
 
@@ -82,148 +85,168 @@ Returns service health status.
 GET /conversations
 ```
 
-Fetch all conversations from Crisp.
+Récupère toutes les conversations depuis Crisp.
+
+**Paramètres de requête** :
+
+- `filter_resolved` (optionnel) : Filtre pour les conversations résolues
 
 ```http
 GET /conversations/:conversation_id
 ```
 
-Fetch specific conversation messages.
+Récupère les messages d'une conversation spécifique.
 
 ```http
 POST /conversations
-Body: { "conversation_id": "session_123" }
+Content-Type: application/x-www-form-urlencoded
+
+conversation_id=session_123
 ```
 
-Queue a conversation for classification processing.
+Met en file d'attente une conversation pour traitement et classification.
+
+### Webhook Crisp
+
+```http
+POST /crisp/webhook/message-updated?secret={CRISP_WEBHOOK_SECRET}
+Content-Type: application/json
+```
+
+Reçoit les notifications de webhook de Crisp lors de la mise à jour de messages. Nécessite le secret webhook configuré dans `CRISP_WEBHOOK_SECRET`.
 
 ## Architecture
 
 ### Modules
 
-- **AiModule**: LLM integration and classification agents
-  - `AgentsModule`: Classification agent implementations
-  - `LlmModule`: Albert chat and embedding models
-  - Adapters: Vercel AI, LangChain, OpenAI Agents, VoltAgent
-- **ConversationsModule**: Core conversation processing logic
-  - Controller: HTTP endpoints
-  - Service: Business logic and classification orchestration
-  - Processors: BullMQ job workers
-- **CrispModule**: Crisp API client integration
+- **AiModule**: Intégration LLM et agents de classification
+  - `AgentsModule`: Implémentations d'agents de classification
+  - `LlmModule`: Modèles de chat et d'embedding Albert
+  - Adaptateurs : Vercel AI, LangChain, OpenAI Agents, VoltAgent
+- **ConversationsModule**: Logique de traitement des conversations
+  - Controller : Points de terminaison HTTP
+  - Service : Logique métier et orchestration de classification
+  - Processors : Workers de jobs BullMQ
+- **CrispModule**: Intégration du client API Crisp
+- **DrizzleModule**: Couche base de données avec PostgreSQL + pgvector
+  - Schémas : `conversations`, `subjects`, `conversation_labels`
 
-- **DrizzleModule**: Database layer with PostgreSQL + pgvector
-  - Schemas: `conversations`, `subjects`, `conversation_subjects`
-
-### Database Schema
+### Schéma de Base de Données
 
 #### conversations
 
 - `id` (uuid, PK)
 - `crisp_conversation_id` (text, unique)
-- `text_hash` (text, unique) - SHA256 of conversation content
+- `text_hash` (text, unique) - SHA256 du contenu de conversation
 - `created_at` (timestamp)
 
 #### subjects
 
 - `id` (uuid, PK)
 - `name` (text, unique)
-- `embedding` (vector[1024]) - pgvector embedding
-- `alias_of` (uuid, FK) - References parent subject for aliases
+- `embedding` (vector[1024]) - Embedding pgvector
+- `alias_of` (uuid, FK) - Référence au sujet parent pour les alias
 - `created_at` (timestamp)
 
-#### conversation_subjects
+#### conversation_labels
 
-Join table linking conversations to subjects:
+Table de jointure reliant les conversations aux sujets :
 
 - `id` (uuid, PK)
 - `conversation_id` (uuid, FK)
 - `subject_id` (uuid, FK)
-- `confidence` (double) - Classification confidence score
+- `confidence` (double) - Score de confiance de classification
 - `conversation_timestamp` (timestamp)
-- `conversation_hash` (text, unique) - Hash of discussion segment
+- `conversation_hash` (text, unique) - Hash du segment de discussion
 - `created_at` (timestamp)
 
-## Classification Flow
+## Flux de Classification
 
-1. **Receive conversation ID** via POST `/conversations`
-2. **Queue job** in BullMQ for async processing
-3. **Fetch messages** from Crisp API
-4. **Split into discussions** (continuous message exchanges)
-5. **Hash check** - Skip if discussion hash already processed
-6. **LLM classification** - Generate subject description
-7. **Vector similarity search** using pgvector:
-   - `>= 0.85` similarity: Reuse existing subject
-   - `0.70-0.85`: Create alias subject linked to parent
-   - `< 0.70`: Create new subject
-8. **Store association** in `conversation_subjects`
+1. **Réception de l'ID de conversation** via POST `/conversations`
+2. **Mise en file d'attente** dans BullMQ pour traitement asynchrone
+3. **Récupération des messages** depuis l'API Crisp
+4. **Division en discussions** (échanges de messages continus)
+5. **Vérification de hash** - Ignorer si le hash de discussion est déjà traité
+6. **Classification LLM** - Génération de description du sujet
+7. **Recherche de similarité vectorielle** avec pgvector :
+   - `>= 0.85` similarité : Réutiliser le sujet existant
+   - `0.70-0.85` : Créer un alias de sujet lié au parent
+   - `< 0.70` : Créer un nouveau sujet
+8. **Stockage de l'association** dans `conversation_labels`
 
-### Deduplication Strategy
+### Stratégie de Déduplication
 
-- **Conversation level**: SHA256 hash of full conversation content
-- **Discussion level**: SHA256 hash of individual discussion segments
-- Ensures idempotency even when conversations are reprocessed
+- **Niveau conversation** : Hash SHA256 du contenu complet de conversation
+- **Niveau discussion** : Hash SHA256 des segments individuels de discussion
+- Garantit l'idempotence même lorsque les conversations sont retraitées
 
-### Vector Similarity
+### Similarité Vectorielle
 
-Uses cosine similarity via pgvector to match semantically similar subjects. Thresholds are configurable via environment variables.
+Utilise la similarité cosinus via pgvector pour faire correspondre des sujets sémantiquement similaires. Les seuils sont configurables via les variables d'environnement.
 
-## Development
+## Développement
 
 ```bash
-# Development with watch mode
+# Développement avec mode watch
 pnpm start:dev
 
-# Production build
+# Build de production
 pnpm build
 pnpm start:prod
 
-# Run linter
+# Exécuter le linter
 pnpm lint
 
-# Format code
+# Formater le code
 pnpm format
 
-# Database operations
-pnpm db:generate  # Generate migrations
-pnpm db:push      # Push schema changes
-pnpm db:studio    # Open Drizzle Studio
+# Opérations de base de données
+pnpm db:generate  # Générer les migrations
+pnpm db:push      # Pousser les changements de schéma
+pnpm db:studio    # Ouvrir Drizzle Studio
 ```
 
 ## Docker
 
+L'infrastructure Docker expose PostgreSQL sur le port **5999** et Redis sur le port **6999** (non les ports par défaut).
+
 ```bash
-# Start all services (PostgreSQL + Redis)
+# Démarrer tous les services (PostgreSQL + Redis)
 pnpm docker:up
 
-# View logs
+# Voir les logs
 pnpm docker:logs
 
-# Stop services
+# Arrêter les services
 pnpm docker:down
 
-# Clean volumes and restart
+# Nettoyer les volumes et redémarrer
 pnpm docker:clean
 pnpm docker:up
 ```
 
-## Production Deployment
+## Déploiement en Production
 
-Build and run with Docker:
+Build et exécution avec Docker :
 
 ```bash
-docker build -t vae-crisp .
-docker run -p 3000:3000 --env-file .env vae-crisp
+docker build -t classifia .
+docker run -p 3000:3000 --env-file .env classifia
 ```
 
-Or use the provided `docker-compose.yml` for full stack deployment.
+Ou utiliser le `docker-compose.yml` fourni pour le déploiement de la stack complète.
 
-## Security & Privacy
+## Sécurité & Confidentialité
 
-- **No plaintext storage**: Messages are never stored, only hashes and metadata
-- **Confidentiality**: LLM prompts explicitly forbid PII in generated subjects
-- **Idempotency**: Hash-based deduplication prevents duplicate processing
-- **TLS**: All external connections should use TLS in production
+- **Pas de stockage en texte clair** : Les messages ne sont jamais stockés, uniquement les hashes et métadonnées
+- **Confidentialité** : Les prompts LLM interdisent explicitement les PII dans les sujets générés
+- **Idempotence** : La déduplication basée sur hash empêche le traitement dupliqué
+- **TLS** : Toutes les connexions externes doivent utiliser TLS en production
 
-## License
+## À Propos
+
+**ClassifIA** est un projet développé dans le cadre de [Beta Gouv](https://beta.gouv.fr/), l'incubateur de services numériques de l'État français.
+
+## Licence
 
 MIT

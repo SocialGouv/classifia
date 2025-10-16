@@ -1,0 +1,52 @@
+meta {
+  name: Webhook Message Updated
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/crisp/webhook/message-updated?secret={{CRISP_WEBHOOK_SECRET}}
+  body: json
+  auth: inherit
+}
+
+params:query {
+  secret: {{CRISP_WEBHOOK_SECRET}}
+}
+
+body:json {
+  {
+    "website_id": "example-website-id",
+    "event": "message:updated",
+    "timestamp": 1640000000000,
+    "data": {
+      "session_id": "session_example_123",
+      "fingerprint": 123456789,
+      "user": {
+        "type": "contact",
+        "nickname": "John Doe"
+      },
+      "content": "Message example",
+      "type": "text",
+      "from": "contact",
+      "timestamp": 1640000000
+    }
+  }
+}
+
+docs {
+  Endpoint webhook pour recevoir les notifications de mise à jour de messages depuis Crisp.
+
+  Paramètres:
+  - secret (query, required): Secret de webhook Crisp pour authentification (CRISP_WEBHOOK_SECRET)
+
+  Corps de la requête (JSON):
+  Payload de webhook Crisp contenant les détails de l'événement message:updated
+
+  Retourne HTTP 200 si le webhook est traité avec succès, HTTP 400 si le secret est invalide.
+}
+
+settings {
+  encodeUrl: true
+}
+

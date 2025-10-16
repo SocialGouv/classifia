@@ -1,0 +1,22 @@
+meta {
+  name: Health Check
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/health
+  body: none
+  auth: inherit
+}
+
+docs {
+  Vérification de l'état de santé de l'API.
+
+  Retourne un statut HTTP 200 avec { "status": "ok" } si le service fonctionne correctement.
+}
+
+settings {
+  encodeUrl: true
+}
+

@@ -1,7 +1,7 @@
 {
-  "name": "vae-crisp",
+  "name": "ClassifIA",
   "version": "1.0.0",
-  "description": "Automated conversation classification system for Crisp support messages using LLM-based analysis and vector similarity matching",
+  "description": "Service automatisé de classification de conversations pour les messages de support Crisp. Utilise l'analyse basée sur LLM (Albert IA du gouvernement français) pour catégoriser les conversations en sujets/thèmes avec correspondance de similarité vectorielle (pgvector) pour identifier les problèmes récurrents et générer des analyses. Développé avec NestJS, PostgreSQL, Redis/BullMQ et respecte la confidentialité (aucun stockage en texte clair).",
   "author": "Thomas Dos Anjos",
   "license": "MIT",
   "scripts": {
@@ -21,7 +21,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "docker:build": "docker build -t vae-crisp .",
+    "docker:build": "docker build -t classifia .",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",

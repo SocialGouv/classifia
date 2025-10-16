@@ -13,14 +13,36 @@ Données d'entrée (Input)
 
 Objectif de classification
 - Produire 1 description (unique) pour la discussion, qui soit:
-  - spécifique (révèle clairement le sujet abordé),
+  - TRÈS SPÉCIFIQUE (révèle le sujet EXACT abordé, pas une catégorie générale),
   - concise (≈ 3 à 8 mots),
   - maximale de 100 caractères,
   - minimale de 3 caractères,
   - normalisée en français, en minuscules,
   - générique (aucune donnée personnelle),
-  - utile pour classer/filtrer la conversation.
-- Exemples de bonnes descriptions: "contestation abandon et statut dossier", "date certificat de réalisation", "accès compte et mot de passe", "question facturation incohérente", "retard ou perte de livraison".
+  - utile pour classer/filtrer la conversation et retrouver des données pertinentes ultérieurement.
+
+RÈGLE CRITIQUE DE SPÉCIFICITÉ:
+- La description DOIT capturer le sujet PRÉCIS de la conversation, pas une thématique vague.
+- ÉVITER les labels génériques ou trop larges qui ne permettent pas d'identifier le problème exact.
+- La description doit permettre de comprendre EXACTEMENT de quoi il s'agit sans lire la conversation.
+- Objectif: permettre une recherche et un filtrage précis des conversations similaires.
+
+Exemples de descriptions INSUFFISANTES (trop génériques - À ÉVITER):
+❌ "modification de dossier"
+❌ "question sur le compte"
+❌ "problème technique"
+❌ "demande d'information"
+❌ "question candidat"
+
+Exemples de bonnes descriptions (spécifiques - À SUIVRE):
+✓ "contestation abandon et statut dossier"
+✓ "date certificat de réalisation"
+✓ "accès compte et mot de passe oublié"
+✓ "question facturation incohérente après remboursement"
+✓ "retard ou perte de livraison colis"
+✓ "modification adresse email dans profil"
+✓ "recalcul note jury après contestation"
+
 - Dédupliquer les descriptions proches et éviter la redondance.
 - Ignorer le bruit (salutations, remerciements) et se concentrer sur le besoin principal explicite ou implicite.
 
@@ -44,10 +66,11 @@ Format de sortie (Output)
 - Utiliser "SKIP" pour les discussions non classables ou non pertinentes.
 
 Procédure
-1) Lire conversation.messages, identifier la thématique dominante.
-2) Produire 1 description.
-3) Normaliser en français, minuscules, concis, spécifiques, sans PII.
-4) Construire le JSON final au format défini.
+1) Lire conversation.messages, identifier le sujet PRÉCIS et SPÉCIFIQUE (pas une catégorie générale).
+2) Produire 1 description qui capture EXACTEMENT le problème/besoin/sujet abordé.
+3) Vérifier que la description n'est PAS générique - elle doit être suffisamment détaillée pour distinguer cette conversation d'autres conversations similaires.
+4) Normaliser en français, minuscules, concis, spécifiques, sans PII.
+5) Construire le JSON final au format défini.
 
 Exemples (few-shot)
 
@@ -129,4 +152,5 @@ Sortie attendue:
 Rappel final
 - Sortie: uniquement le JSON final.
 - Aucune PII dans les descriptions.
+- IMPÉRATIF: la description doit être TRÈS SPÉCIFIQUE, jamais générique. Elle doit capturer le sujet exact pour permettre un filtrage et une recherche précis.
 `;

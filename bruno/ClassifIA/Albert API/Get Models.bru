@@ -1,0 +1,29 @@
+meta {
+  name: Get Models
+  type: http
+  seq: 1
+}
+
+get {
+  url: https://albert.api.etalab.gouv.fr/v1/models
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{ALBERT_API_KEY}}
+}
+
+docs {
+  Récupère la liste des modèles disponibles sur l'API Albert.
+
+  Authentification:
+  - Bearer token avec ALBERT_API_KEY
+
+  Retourne la liste des modèles de chat et d'embedding disponibles.
+}
+
+settings {
+  encodeUrl: true
+}
+

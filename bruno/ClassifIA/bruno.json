@@ -1,0 +1,7 @@
+{
+  "version": "1",
+  "name": "ClassifIA",
+  "type": "collection",
+  "ignore": ["node_modules", ".git"],
+  "docs": "Collection d'API pour ClassifIA - Système de classification automatisée de conversations Crisp (Projet Beta Gouv).\n\nInclut les endpoints pour la gestion des conversations, l'intégration webhook Crisp, et les tests de l'API Albert.\n\nConfiguration requise dans l'environnement : base_url, conversation_id, ALBERT_API_KEY, CRISP_WEBHOOK_SECRET"
+}
