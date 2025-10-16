@@ -1,3 +1,10 @@
+-- Enable pgvector extension for vector similarity search
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Set timezone
+SET timezone = 'UTC';
+
+
 CREATE TABLE "conversation_labels" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"conversation_id" uuid NOT NULL,
