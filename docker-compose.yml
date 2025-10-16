@@ -6,7 +6,7 @@ services:
     image: pgvector/pgvector:pg16
     container_name: classifia-postgres
     environment:
-      POSTGRES_DB: vae_crisp
+      POSTGRES_DB: classifia
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
