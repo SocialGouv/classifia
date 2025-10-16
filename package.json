@@ -4,6 +4,11 @@
   "description": "Service automatisé de classification de conversations pour les messages de support Crisp. Utilise l'analyse basée sur LLM (Albert IA du gouvernement français) pour catégoriser les conversations en sujets/thèmes avec correspondance de similarité vectorielle (pgvector) pour identifier les problèmes récurrents et générer des analyses. Développé avec NestJS, PostgreSQL, Redis/BullMQ et respecte la confidentialité (aucun stockage en texte clair).",
   "author": "Thomas Dos Anjos",
   "license": "MIT",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10.18"
+  },
+  "packageManager": "pnpm@10.18.3",
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
@@ -33,6 +38,7 @@
     "@langchain/core": "^0.3.78",
     "@langchain/langgraph": "^0.4.9",
     "@nestjs/bullmq": "^11.0.4",
+    "@nestjs/cli": "^11.0.10",
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.6",
@@ -45,6 +51,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "dotenv": "^17.2.3",
+    "drizzle-kit": "^0.31.5",
     "drizzle-orm": "^0.44.6",
     "langchain": "^0.3.35",
     "nestjs-pino": "^4.4.1",
@@ -58,7 +65,6 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.37.0",
-    "@nestjs/cli": "^11.0.10",
     "@nestjs/mapped-types": "^2.1.0",
     "@nestjs/schematics": "^11.0.9",
     "@nestjs/testing": "^11.1.6",
@@ -66,7 +72,6 @@
     "@types/node": "^24.7.1",
     "@types/pg": "^8.15.5",
     "@types/supertest": "^6.0.3",
-    "drizzle-kit": "^0.31.5",
     "eslint": "^9.37.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",
