@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { Queue } from 'bullmq';
 
-import { ClassifyConversationVercelAiAgent } from '../ai/agents/classify-conversation/classify-conversation.vercel-ai';
+import { ClassifyConversationOpenaiAgent } from '../ai/agents/classify-conversation/classify-conversation.openai-agent';
 import { AlbertEmbedding } from '../ai/llm/albert/albert.embedding';
 import { DrizzleService } from '../drizzle/drizzle.service';
 
@@ -32,7 +32,7 @@ export class ConversationsService {
     private readonly crisp: CrispService,
     @InjectQueue('conversations')
     private readonly conversationsQueue: Queue,
-    private readonly classifyConversationAgent: ClassifyConversationVercelAiAgent,
+    private readonly classifyConversationAgent: ClassifyConversationOpenaiAgent,
     private readonly embedding: AlbertEmbedding,
     private readonly drizzleService: DrizzleService,
   ) {}
@@ -56,7 +56,7 @@ export class ConversationsService {
    * @param data - Object containing the conversation ID from Crisp
    * @returns Processing result with classified conversations and metadata
    */
-  async processConversation(data: { conversation_id: string }) {
+  async processCrispConversation(data: { conversation_id: string }) {
     if (!data.conversation_id) {
       throw new BadRequestException('Conversation ID is required');
     }

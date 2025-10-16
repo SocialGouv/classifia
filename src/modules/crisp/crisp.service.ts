@@ -1,6 +1,10 @@
+import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
+import { Queue } from 'bullmq';
+
+import { CONVERSATIONS_JOBS } from '../conversations/conversations.job';
 
 import { CrispConversationResponse } from './crisp.interface';
 
@@ -10,7 +14,11 @@ import type { Env } from '@/core/config/app.schema.config';
 export class CrispService {
   private readonly crispApi: AxiosInstance;
 
-  constructor(private readonly configService: ConfigService<Env, true>) {
+  constructor(
+    private readonly configService: ConfigService<Env, true>,
+    @InjectQueue('conversations')
+    private readonly conversationsQueue: Queue,
+  ) {
     this.crispApi = axios.create({
       baseURL: this.configService.getOrThrow('CRISP_URL'),
       headers: {
@@ -36,5 +44,25 @@ export class CrispService {
       `/conversation/${conversationId}/messages`,
     );
     return response.data;
+  }
+
+  async webhookMessageUpdated(body: any) {
+    console.log('body', body);
+    const conversationResolved =
+      body.data.content.namespace === 'state:resolved';
+
+    if (conversationResolved) {
+      const conversationId = body.data.session_id;
+      console.log('conversationId', conversationId);
+
+      await this.conversationsQueue.add(
+        CONVERSATIONS_JOBS.PROCESS_CRISP_CONVERSATION,
+        {
+          conversation_id: conversationId,
+        },
+      );
+    }
+
+    return { status: 'success' };
   }
 }

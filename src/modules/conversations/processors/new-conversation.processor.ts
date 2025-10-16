@@ -14,23 +14,23 @@ export class NewConversationProcessor extends WorkerHost {
   }
 
   async process(job: Job<{ conversation_id: string }>) {
-    if (job.name === CONVERSATIONS_JOBS.NEW_CONVERSATION) {
+    if (job.name === CONVERSATIONS_JOBS.PROCESS_CRISP_CONVERSATION) {
       try {
-        this.logger.log(`Processing conversation: ${job.data.conversation_id}`);
-        const result = await this.conversationsService.processConversation(
+        this.logger.log(
+          `Processing Crisp conversation: ${job.data.conversation_id}`,
+        );
+        const result = await this.conversationsService.processCrispConversation(
           job.data,
         );
         this.logger.log(
-          `Successfully processed conversation: ${job.data.conversation_id}`,
+          `Successfully processed Crisp conversation: ${job.data.conversation_id}`,
         );
         return { status: 'ok', result };
       } catch (error) {
         this.logger.error(
-          `Error processing conversation ${job.data.conversation_id}:`,
+          `Error processing Crisp conversation ${job.data.conversation_id}:`,
           error instanceof Error ? error.stack : error,
         );
-
-        // Re-throw the error to let BullMQ handle retries and dead letter queue
         throw error;
       }
     }

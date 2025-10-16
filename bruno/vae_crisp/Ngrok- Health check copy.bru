@@ -1,0 +1,15 @@
+meta {
+  name: Ngrok/ Health check copy
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{ngrok_url}}/health
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}
