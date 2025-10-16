@@ -1,5 +1,7 @@
 # ClassifIA : Système de Classification de Conversations
 
+![ClassifIA Logo](assets/classifia-logo.png)
+
 **Projet Beta Gouv** - Service automatisé de classification de conversations pour les messages de support Crisp. Utilise l'analyse basée sur LLM pour catégoriser les conversations en sujets/thèmes avec correspondance de similarité vectorielle pour identifier les problèmes récurrents et générer des analyses.
 
 ## Stack Technique
@@ -22,32 +24,32 @@
 
 ### Installation
 
-1. Cloner et installer les dépendances :
+- **Cloner et installer les dépendances :**
 
 ```bash
 pnpm install
 ```
 
-2. Configurer les variables d'environnement :
+- **Configurer les variables d'environnement :**
 
 ```bash
 cp .env.example .env
 # Éditer .env avec vos identifiants réels
 ```
 
-3. Démarrer l'infrastructure (PostgreSQL + Redis) :
+- **Démarrer l'infrastructure (PostgreSQL + Redis) :**
 
 ```bash
 pnpm docker:up
 ```
 
-4. Exécuter les migrations de base de données :
+- **Exécuter les migrations de base de données :**
 
 ```bash
 pnpm db:push
 ```
 
-5. Démarrer le serveur de développement :
+- **Démarrer le serveur de développement :**
 
 ```bash
 pnpm start:dev
