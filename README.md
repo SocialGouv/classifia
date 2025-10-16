@@ -63,7 +63,7 @@ Voir `.env.example` pour la configuration complète requise. Variables clés :
 
 - **Albert LLM**: `ALBERT_API_KEY`, `ALBERT_URL`
 - **Base de données**: `DATABASE_URL` (PostgreSQL avec pgvector)
-- **Redis**: `REDIS_HOST`, `REDIS_PORT`
+- **Redis**: `REDIS_URL`
 - **Crisp API**: `CRISP_API_KEY`, `CRISP_URL`, `CRISP_WEBHOOK_SECRET`
 - **Seuils de similarité**: `VECTOR_SIMILARITY_REUSE` (0.85), `VECTOR_SIMILARITY_ALIAS` (0.70)
 - **BullMQ**: `BULLMQ_CONCURRENCY`, `BULLMQ_ATTEMPTS`, `BULLMQ_BACKOFF_DELAY`, `BULLMQ_RATE_LIMIT`

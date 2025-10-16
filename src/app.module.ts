@@ -56,8 +56,7 @@ import { DrizzleModule } from './modules/drizzle/drizzle.module';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         connection: {
-          host: configService.get('REDIS_HOST'),
-          port: configService.get('REDIS_PORT'),
+          url: configService.getOrThrow('REDIS_URL'),
         },
       }),
       inject: [ConfigService],
