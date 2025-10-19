@@ -24,7 +24,7 @@ services:
 
   # Redis for BullMQ
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     container_name: classifia-redis
     ports:
       - '6999:6379'
