@@ -1,6 +1,5 @@
 import { createHash } from 'crypto';
 
-import { InjectQueue } from '@nestjs/bullmq';
 import {
   BadRequestException,
   Injectable,
@@ -8,13 +7,11 @@ import {
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { Queue } from 'bullmq';
 
 import { ClassifyConversationOpenaiAgent } from '../ai/agents/classify-conversation/classify-conversation.openai-agent';
 import { AlbertEmbedding } from '../ai/llm/albert/albert.embedding';
 import { DrizzleService } from '../drizzle/drizzle.service';
 
-import { CONVERSATIONS_JOBS } from './conversations.job';
 import {
   ClassificationAction,
   SIMILARITY_THRESHOLDS,
@@ -30,26 +27,10 @@ export class ConversationsService {
 
   constructor(
     private readonly crisp: CrispService,
-    @InjectQueue('conversations')
-    private readonly conversationsQueue: Queue,
     private readonly classifyConversationAgent: ClassifyConversationOpenaiAgent,
     private readonly embedding: AlbertEmbedding,
     private readonly drizzleService: DrizzleService,
   ) {}
-
-  async newConversation(conversation_id: string) {
-    await this.conversationsQueue.add(CONVERSATIONS_JOBS.NEW_CONVERSATION, {
-      conversation_id,
-    });
-  }
-
-  getConversations() {
-    return this.crisp.getConversations();
-  }
-
-  getConversationMessages(conversationId: string) {
-    return this.crisp.getConversationMessages(conversationId);
-  }
 
   /**
    * Processes a conversation by classifying its content and creating subject associations

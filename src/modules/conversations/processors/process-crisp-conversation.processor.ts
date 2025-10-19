@@ -6,8 +6,8 @@ import { CONVERSATIONS_JOBS, CONVERSATIONS_QUEUE } from '../conversations.job';
 import { ConversationsService } from '../conversations.service';
 
 @Processor(CONVERSATIONS_QUEUE)
-export class NewConversationProcessor extends WorkerHost {
-  private readonly logger = new Logger(NewConversationProcessor.name);
+export class ProcessCrispConversationProcessor extends WorkerHost {
+  private readonly logger = new Logger(ProcessCrispConversationProcessor.name);
 
   constructor(private readonly conversationsService: ConversationsService) {
     super();

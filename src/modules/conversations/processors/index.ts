@@ -1,1 +1,1 @@
-export { NewConversationProcessor } from './new-conversation.processor';
+export { ProcessCrispConversationProcessor } from './process-crisp-conversation.processor';

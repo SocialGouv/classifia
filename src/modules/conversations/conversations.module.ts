@@ -5,10 +5,9 @@ import { AiModule } from '../ai/ai.module';
 import { CrispModule } from '../crisp/crisp.module';
 import { DrizzleModule } from '../drizzle/drizzle.module';
 
-import { ConversationsController } from './conversations.controller';
 import { CONVERSATIONS_QUEUE } from './conversations.job';
 import { ConversationsService } from './conversations.service';
-import { NewConversationProcessor } from './processors';
+import { ProcessCrispConversationProcessor } from './processors';
 
 @Module({
   imports: [
@@ -19,7 +18,6 @@ import { NewConversationProcessor } from './processors';
       name: CONVERSATIONS_QUEUE,
     }),
   ],
-  controllers: [ConversationsController],
-  providers: [ConversationsService, NewConversationProcessor],
+  providers: [ConversationsService, ProcessCrispConversationProcessor],
 })
 export class ConversationsModule {}

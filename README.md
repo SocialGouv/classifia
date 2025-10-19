@@ -81,33 +81,6 @@ GET /health
 
 Retourne le statut de santé du service.
 
-### Conversations
-
-```http
-GET /conversations
-```
-
-Récupère toutes les conversations depuis Crisp.
-
-**Paramètres de requête** :
-
-- `filter_resolved` (optionnel) : Filtre pour les conversations résolues
-
-```http
-GET /conversations/:conversation_id
-```
-
-Récupère les messages d'une conversation spécifique.
-
-```http
-POST /conversations
-Content-Type: application/x-www-form-urlencoded
-
-conversation_id=session_123
-```
-
-Met en file d'attente une conversation pour traitement et classification.
-
 ### Webhook Crisp
 
 ```http
@@ -116,6 +89,8 @@ Content-Type: application/json
 ```
 
 Reçoit les notifications de webhook de Crisp lors de la mise à jour de messages. Nécessite le secret webhook configuré dans `CRISP_WEBHOOK_SECRET`.
+
+**Point d'entrée unique** : L'API ne dispose d'aucun endpoint public pour créer ou consulter des conversations. Toutes les conversations sont automatiquement traitées via le webhook Crisp lorsqu'une conversation est marquée comme résolue (`state:resolved`).
 
 ## Architecture
 
@@ -126,7 +101,6 @@ Reçoit les notifications de webhook de Crisp lors de la mise à jour de message
   - `LlmModule`: Modèles de chat et d'embedding Albert
   - Adaptateurs : Vercel AI, LangChain, OpenAI Agents, VoltAgent
 - **ConversationsModule**: Logique de traitement des conversations
-  - Controller : Points de terminaison HTTP
   - Service : Logique métier et orchestration de classification
   - Processors : Workers de jobs BullMQ
 - **CrispModule**: Intégration du client API Crisp
@@ -164,7 +138,7 @@ Table de jointure reliant les conversations aux sujets :
 
 ## Flux de Classification
 
-1. **Réception de l'ID de conversation** via POST `/conversations`
+1. **Réception du webhook Crisp** lorsqu'une conversation est marquée comme résolue
 2. **Mise en file d'attente** dans BullMQ pour traitement asynchrone
 3. **Récupération des messages** depuis l'API Crisp
 4. **Division en discussions** (échanges de messages continus)
