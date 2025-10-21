@@ -42,7 +42,7 @@ jobs:
           path: node_modules
 
   lint-and-typecheck:
-    name: Lint, TypeScript and Prettier Check
+    name: Quality Checks
     runs-on: ubuntu-latest
     needs: setup
     strategy:
@@ -71,12 +71,12 @@ jobs:
 
       - name: Run ESLint
         if: matrix.check == 'eslint'
-        run: pnpm exec eslint "src/**/*.ts" "test/**/*.ts" --cache --cache-location .eslintcache
+        run: pnpm eslint "src/**/*.ts" "test/**/*.ts" --cache --cache-location .eslintcache
 
       - name: Run TypeScript type check
         if: matrix.check == 'typescript'
-        run: pnpm exec tsc --noEmit
+        run: pnpm tsc --noEmit
 
       - name: Run Prettier check
         if: matrix.check == 'prettier'
-        run: pnpm exec prettier --check "src/**/*.ts" "test/**/*.ts"
+        run: pnpm prettier --check "src/**/*.ts" "test/**/*.ts"
