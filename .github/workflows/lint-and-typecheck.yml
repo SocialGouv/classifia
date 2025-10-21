@@ -71,12 +71,12 @@ jobs:
 
       - name: Run ESLint
         if: matrix.check == 'eslint'
-        run: pnpm eslint "src/**/*.ts" "test/**/*.ts" --cache --cache-location .eslintcache
+        run: pnpm run check:lint
 
       - name: Run TypeScript type check
         if: matrix.check == 'typescript'
-        run: pnpm tsc --noEmit
+        run: pnpm run check:types
 
       - name: Run Prettier check
         if: matrix.check == 'prettier'
-        run: pnpm prettier --check "src/**/*.ts" "test/**/*.ts"
+        run: pnpm run check:format
