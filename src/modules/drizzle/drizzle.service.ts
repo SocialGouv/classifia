@@ -3,6 +3,7 @@ import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 
 import { VaeEntity } from '../conversations/types/vae-entity.types';
+
 import { DrizzleAsyncProvider } from './drizzle.provider';
 import * as schema from './schema';
 
