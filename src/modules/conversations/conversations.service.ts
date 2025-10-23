@@ -1,22 +1,14 @@
 import { createHash } from 'crypto';
 
-import {
-  BadRequestException,
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
+import { AssignTopicAgent } from '../ai/agents/assign-topic/assign-topic.agent';
 import { ClassifyConversationOpenaiAgent } from '../ai/agents/classify-conversation/classify-conversation.openai-agent';
 import { AlbertEmbedding } from '../ai/llm/albert/albert.embedding';
 import { DrizzleService } from '../drizzle/drizzle.service';
 
-import {
-  ClassificationAction,
-  SIMILARITY_THRESHOLDS,
-} from './types/classification.types';
-import { ClassifyOutput } from './types/conversation.types';
+import { ClassifyOutput } from './types/hierarchical-classification.types';
 import { splitFullConversationToDiscussion } from './utils/split-full-conversation-to-discussion.util';
 
 import { CrispService } from '@/modules/crisp/crisp.service';
@@ -24,251 +16,202 @@ import { CrispService } from '@/modules/crisp/crisp.service';
 @Injectable()
 export class ConversationsService {
   private readonly logger = new Logger(ConversationsService.name);
+  private readonly labelSimilarityThreshold: number;
 
   constructor(
     private readonly crisp: CrispService,
     private readonly classifyConversationAgent: ClassifyConversationOpenaiAgent,
     private readonly embedding: AlbertEmbedding,
     private readonly drizzleService: DrizzleService,
-  ) {}
+    private readonly assignTopicAgent: AssignTopicAgent,
+    private readonly configService: ConfigService,
+  ) {
+    this.labelSimilarityThreshold =
+      this.configService.get('LABEL_SIMILARITY_THRESHOLD') || 0.92;
+  }
 
   /**
-   * Processes a conversation by classifying its content and creating subject associations
-   * @param data - Object containing the conversation ID from Crisp
-   * @returns Processing result with classified conversations and metadata
+   * Processes a Crisp conversation using hierarchical classification
+   * Multi-stage: Label extraction → Topic assignment → Storage
    */
   async processCrispConversation(data: { conversation_id: string }) {
     if (!data.conversation_id) {
       throw new BadRequestException('Conversation ID is required');
     }
 
-    let conversation;
-    try {
-      conversation = await this.crisp.getConversationMessages(
+    // Fetch messages from Crisp
+    const conversation = await this.crisp.getConversationMessages(
+      data.conversation_id,
+    );
+
+    const discussions = splitFullConversationToDiscussion(conversation.data);
+    if (discussions.conversations.length === 0) {
+      return { status: 'ok', message: 'No discussions to process' };
+    }
+
+    const sessionText = JSON.stringify(conversation.data);
+    const sessionHash = createHash('sha256').update(sessionText).digest('hex');
+
+    // Check if session already exists
+    const existingSession =
+      await this.drizzleService.getSessionByHash(sessionHash);
+    if (existingSession) {
+      return {
+        status: 'skipped',
+        reason: 'duplicate_session',
+        sessionId: existingSession.id,
+      };
+    }
+
+    // Create or get session
+    let dbSession = await this.drizzleService.getSessionByCrispId(
+      data.conversation_id,
+    );
+    if (!dbSession) {
+      dbSession = await this.drizzleService.createSession(
         data.conversation_id,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Error fetching conversation from Crisp: ${data.conversation_id}`,
-        error instanceof Error ? error.stack : error,
-      );
-      throw new ServiceUnavailableException(
-        `Failed to fetch conversation from Crisp: ${
-          error instanceof Error ? error.message : 'Unknown error'
-        }`,
+        sessionHash,
       );
     }
-    const discussions = splitFullConversationToDiscussion(conversation.data);
-    if (discussions.conversations.length > 0) {
-      const conversationText = JSON.stringify(conversation.data);
-      const textHash = createHash('sha256')
-        .update(conversationText)
+
+    const processedDiscussions: any[] = [];
+
+    // Process each discussion
+    for (const discussion of discussions.conversations) {
+      const discussionHash = createHash('sha256')
+        .update(JSON.stringify(discussion))
         .digest('hex');
 
-      let existingConversationByHash;
-      try {
-        existingConversationByHash =
-          await this.drizzleService.getConversationByHash(textHash);
-      } catch (error) {
-        this.logger.error(
-          'Error checking for existing conversation by hash',
-          error instanceof Error ? error.stack : error,
+      // Check if discussion already classified
+      const existingClassification =
+        await this.drizzleService.getDiscussionClassificationByHash(
+          discussionHash,
         );
-        throw new InternalServerErrorException(
-          `Failed to check for existing conversation: ${
-            error instanceof Error ? error.message : 'Unknown error'
-          }`,
-        );
+      if (existingClassification) {
+        continue;
       }
 
-      if (existingConversationByHash) {
-        return {
-          status: 'skipped',
-          reason: 'duplicate_hash',
-          existingConversationId: existingConversationByHash.id,
-        };
-      }
-
-      let dbConversation;
-      try {
-        dbConversation = await this.drizzleService.getConversationByCrispId(
-          data.conversation_id,
+      // STAGE 1: Extract label with classification agent
+      const classification: ClassifyOutput =
+        await this.classifyConversationAgent.classify(
+          JSON.stringify({
+            session_id: discussions.session_id,
+            conversation: discussion,
+          }),
         );
-      } catch (error) {
-        this.logger.error(
-          'Error fetching conversation by Crisp ID',
-          error instanceof Error ? error.stack : error,
-        );
-        throw new InternalServerErrorException(
-          `Failed to fetch conversation by Crisp ID: ${
-            error instanceof Error ? error.message : 'Unknown error'
-          }`,
-        );
-      }
 
-      if (!dbConversation) {
-        try {
-          dbConversation = await this.drizzleService.createConversation(
-            data.conversation_id,
-            textHash,
-          );
-        } catch (error) {
-          this.logger.error(
-            'Error creating conversation',
-            error instanceof Error ? error.stack : error,
-          );
-          throw new InternalServerErrorException(
-            `Failed to create conversation: ${
-              error instanceof Error ? error.message : 'Unknown error'
-            }`,
-          );
-        }
-      }
+      const { label, confidence, semantic_context, detected_entity } =
+        classification.conversation;
 
-      // Process each resolved discussion individually; ignore duplicates by conversationHash
-      const finalConversations: any[] = [];
-
-      for (const discussion of discussions.conversations) {
-        const conversationHash = createHash('sha256')
-          .update(JSON.stringify(discussion))
-          .digest('hex');
-
-        // If hash exists, strictly ignore (no DB write)
-        const already =
-          await this.drizzleService.getConversationSubjectByDiscussionHash(
-            conversationHash,
-          );
-        if (already) {
-          continue;
-        }
-
-        // Classify single discussion
-        let classification: ClassifyOutput;
-        try {
-          classification = await this.classifyConversationAgent.classify(
-            JSON.stringify({
-              session_id: discussions.session_id,
-              conversation: discussion,
-            }),
-          );
-        } catch (error) {
-          this.logger.error(
-            'Error classifying single discussion',
-            error instanceof Error ? error.stack : error,
-          );
-          throw new InternalServerErrorException(
-            `Failed to classify discussion: ${
-              error instanceof Error ? error.message : 'Unknown error'
-            }`,
-          );
-        }
-
-        const conv = classification.conversation;
-
-        if (conv.description === 'SKIP') {
-          // Persist SKIP with skip subject
-          const skipSubject =
-            await this.drizzleService.getOrCreateSkipSubject();
-          await this.drizzleService.createConversationSubject({
-            conversationId: dbConversation.id,
-            subjectId: skipSubject.id,
-            confidence: conv.confidence || 0.1,
-            conversationTimestamp: new Date(conv.timestamp),
-            conversationHash,
-          });
-          finalConversations.push({
-            ...conv,
-            embedding: null,
-            subjectId: skipSubject.id,
-            action: 'skip_classification',
-          });
-          continue;
-        }
-
-        // Embed and map to subject
-        const [vec] = await this.embedding.embed([
-          conv.description.toLowerCase(),
-        ]);
-        const embeddingVec = vec as number[];
-
-        let similarSubjects;
-        try {
-          similarSubjects = await this.drizzleService.findSimilarSubjects(
-            embeddingVec,
-            SIMILARITY_THRESHOLDS.SUGGEST_GROUPING,
-          );
-        } catch (error) {
-          this.logger.error(
-            'Error finding similar subjects',
-            error instanceof Error ? error.stack : error,
-          );
-          throw new InternalServerErrorException(
-            `Failed to find similar subjects: ${
-              error instanceof Error ? error.message : 'Unknown error'
-            }`,
-          );
-        }
-
-        let finalSubjectId: string | null = null;
-        let finalAction: ClassificationAction = 'create_new_subject';
-        let confidence = 1.0;
-
-        if (similarSubjects.length > 0) {
-          const bestMatch = similarSubjects[0];
-          confidence = bestMatch.similarity;
-          if (confidence >= SIMILARITY_THRESHOLDS.REUSE_EXISTING) {
-            finalAction = 'reuse_existing';
-            finalSubjectId = bestMatch.id;
-          } else if (confidence >= SIMILARITY_THRESHOLDS.SUGGEST_GROUPING) {
-            finalAction = 'suggest_grouping';
-            finalSubjectId = bestMatch.id;
-          }
-        }
-
-        if (finalAction === 'suggest_grouping' && finalSubjectId) {
-          const aliasSubject = await this.drizzleService.createSubject(
-            conv.description,
-            embeddingVec,
-            finalSubjectId,
-          );
-          finalSubjectId = aliasSubject.id;
-          finalAction = 'created_alias_subject';
-        } else if (finalAction === 'reuse_existing' && finalSubjectId) {
-          finalAction = 'reused_existing_subject';
-        } else if (finalAction === 'create_new_subject') {
-          const newSubject = await this.drizzleService.createSubject(
-            conv.description,
-            embeddingVec,
-          );
-          finalSubjectId = newSubject.id;
-          finalAction = 'created_new_subject';
-        }
-
-        await this.drizzleService.createConversationSubject({
-          conversationId: dbConversation.id,
-          subjectId: finalSubjectId as string,
-          confidence,
-          conversationTimestamp: new Date(conv.timestamp),
-          conversationHash,
+      if (label === 'SKIP') {
+        const skipLabel = await this.drizzleService.getOrCreateSkipLabel();
+        const discussionRecord = await this.drizzleService.createDiscussion({
+          sessionId: dbSession.id,
+          timestamp: new Date(classification.conversation.timestamp),
+          contentHash: discussionHash,
         });
 
-        finalConversations.push({
-          ...conv,
-          embedding: embeddingVec,
-          subjectId: finalSubjectId,
-          action: finalAction,
-          confidence,
+        await this.drizzleService.createDiscussionClassification({
+          discussionId: discussionRecord.id,
+          labelId: skipLabel.id,
+          confidence: confidence || 0.1,
+          discussionTimestamp: new Date(classification.conversation.timestamp),
+          discussionHash,
+          classificationMethod: 'ai_agent',
+          detectedEntity: detected_entity,
         });
+
+        processedDiscussions.push({
+          label: 'SKIP',
+          action: 'skipped',
+        });
+        continue;
       }
 
-      const result = {
-        session_id: discussions.session_id,
-        conversations: finalConversations,
-        conversation_id: dbConversation.id,
-      };
+      // Generate embedding for label
+      const [labelEmbeddingVec] = await this.embedding.embed([
+        label.toLowerCase(),
+      ]);
+      const labelEmbedding = labelEmbeddingVec as number[];
 
-      return { conversations: result };
+      // Find or create label
+      const similarLabels = await this.drizzleService.findSimilarLabels(
+        labelEmbedding,
+        this.labelSimilarityThreshold,
+        1,
+      );
+
+      let finalLabel;
+      if (similarLabels.length > 0) {
+        const similarLabel = similarLabels[0];
+        finalLabel = await this.drizzleService.getLabelById(similarLabel.id);
+        this.logger.debug(
+          `Reusing existing label: ${finalLabel.name} (similarity: ${similarLabel.similarity.toFixed(3)})`,
+        );
+      } else {
+        finalLabel = await this.drizzleService.createLabel({
+          name: label.toLowerCase(),
+          embedding: labelEmbedding,
+          isCanonical: false,
+        });
+        this.logger.log(`Created new label: ${finalLabel.name}`);
+      }
+
+      // STAGE 2: Assign topics via RAG agent
+      const topicAssignments = await this.assignTopicAgent.assignTopics({
+        labelName: finalLabel.name,
+        labelEmbedding,
+        semanticContext: semantic_context,
+        detectedEntity: detected_entity,
+      });
+
+      // Link label to topics
+      for (const assignment of topicAssignments.assignments) {
+        if (assignment.topicId) {
+          await this.drizzleService.linkLabelToTopic({
+            labelId: finalLabel.id,
+            topicId: assignment.topicId,
+            confidence: assignment.confidence,
+            isPrimary: assignment.isPrimary,
+            assignmentMethod: 'rag_agent',
+          });
+        }
+      }
+
+      // STAGE 3: Create discussion and classification
+      const discussionRecord = await this.drizzleService.createDiscussion({
+        sessionId: dbSession.id,
+        timestamp: new Date(classification.conversation.timestamp),
+        contentHash: discussionHash,
+      });
+
+      await this.drizzleService.createDiscussionClassification({
+        discussionId: discussionRecord.id,
+        labelId: finalLabel.id,
+        confidence,
+        discussionTimestamp: new Date(classification.conversation.timestamp),
+        discussionHash,
+        classificationMethod: 'ai_agent',
+        detectedEntity: detected_entity,
+      });
+
+      processedDiscussions.push({
+        label: finalLabel.name,
+        topics: topicAssignments.assignments.map((a) => ({
+          name: a.topicName,
+          thematic: a.thematicName,
+          isPrimary: a.isPrimary,
+          confidence: a.confidence,
+        })),
+        confidence,
+      });
     }
-    return { status: 'ok' };
+
+    return {
+      status: 'success',
+      sessionId: dbSession.id,
+      discussionsProcessed: processedDiscussions.length,
+      discussions: processedDiscussions,
+    };
   }
 }

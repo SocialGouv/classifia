@@ -20,11 +20,13 @@ export const configValidationSchema = z.object({
   BULLMQ_BACKOFF_DELAY: z.coerce.number().int().min(0),
   BULLMQ_RATE_LIMIT: z.coerce.number().int().min(0),
 
-  VECTOR_SIMILARITY_REUSE: z.coerce.number().min(0).max(1),
-  VECTOR_SIMILARITY_ALIAS: z.coerce.number().min(0).max(1),
-
   MAX_TOKENS_PER_CONVERSATION: z.coerce.number().int().positive(),
   MAX_LABELS_PER_CONVERSATION: z.coerce.number().int().min(1),
+
+  LABEL_SIMILARITY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.92),
+  TOPIC_SIMILARITY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.75),
+  TOPIC_ASSIGNMENT_MAX_TOPICS: z.coerce.number().int().min(1).max(5).default(3),
+  RAG_RETRIEVE_TOPICS_LIMIT: z.coerce.number().int().min(1).max(10).default(5),
 });
 
 export type Env = z.infer<typeof configValidationSchema>;

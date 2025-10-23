@@ -18,7 +18,7 @@
 
 ### Prérequis
 
-- Node.js 20+
+- Node.js 22+
 - pnpm
 - Docker & Docker Compose
 
@@ -65,9 +65,9 @@ Voir `.env.example` pour la configuration complète requise. Variables clés :
 - **Base de données**: `DATABASE_URL` (PostgreSQL avec pgvector)
 - **Redis**: `REDIS_URL`
 - **Crisp API**: `CRISP_API_KEY`, `CRISP_URL`, `CRISP_WEBHOOK_SECRET`
-- **Seuils de similarité**: `VECTOR_SIMILARITY_REUSE` (0.85), `VECTOR_SIMILARITY_ALIAS` (0.70)
 - **BullMQ**: `BULLMQ_CONCURRENCY`, `BULLMQ_ATTEMPTS`, `BULLMQ_BACKOFF_DELAY`, `BULLMQ_RATE_LIMIT`
 - **Limites de traitement**: `MAX_TOKENS_PER_CONVERSATION`, `MAX_LABELS_PER_CONVERSATION`
+- **Classification hiérarchique**: `LABEL_SIMILARITY_THRESHOLD` (0.92), `TOPIC_SIMILARITY_THRESHOLD` (0.75), `TOPIC_ASSIGNMENT_MAX_TOPICS` (3), `RAG_RETRIEVE_TOPICS_LIMIT` (5)
 
 Consultez le fichier `.env.example` pour la documentation détaillée de chaque variable.
 
@@ -99,66 +99,102 @@ Reçoit les notifications de webhook de Crisp lors de la mise à jour de message
 - **AiModule**: Intégration LLM et agents de classification
   - `AgentsModule`: Implémentations d'agents de classification
   - `LlmModule`: Modèles de chat et d'embedding Albert
-  - Adaptateurs : Vercel AI, LangChain, OpenAI Agents, VoltAgent
+  - Adaptateurs : OpenAI Agents
 - **ConversationsModule**: Logique de traitement des conversations
   - Service : Logique métier et orchestration de classification
   - Processors : Workers de jobs BullMQ
 - **CrispModule**: Intégration du client API Crisp
 - **DrizzleModule**: Couche base de données avec PostgreSQL + pgvector
-  - Schémas : `conversations`, `subjects`, `conversation_labels`
+  - Schémas : `thematics`, `topics`, `labels`, `sessions`, `discussions`
 
-### Schéma de Base de Données
+### Schéma de Base de Données - Classification Hiérarchique
 
-#### conversations
+Le système de classification hiérarchique à 3 niveaux organise les conversations VAE :
 
-- `id` (uuid, PK)
-- `crisp_conversation_id` (text, unique)
-- `text_hash` (text, unique) - SHA256 du contenu de conversation
-- `created_at` (timestamp)
+#### Niveau 1 - Thematics (Thématiques)
 
-#### subjects
+- 7 grandes catégories : Gestion de Compte, Dossier et Candidature, Accompagnement et Organismes, Procédures et Démarches VAE, Jury et Validation, Aspects Financiers, Technique et Plateforme
+- Tables : `thematics`
+- Permettent de regrouper les topics par domaine métier
 
-- `id` (uuid, PK)
-- `name` (text, unique)
-- `embedding` (vector[1024]) - Embedding pgvector
-- `alias_of` (uuid, FK) - Référence au sujet parent pour les alias
-- `created_at` (timestamp)
+#### Niveau 2 - Topics (Topics conceptuels)
 
-#### conversation_labels
+- ~40 groupements conceptuels sous les thématiques
+- Exemples : "Authentification et Connexion", "Contestation et Statut", "Frais de Jury"
+- Tables : `topics` (avec embeddings vectoriels pour recherche sémantique)
+- Un label peut appartenir à plusieurs topics (relation many-to-many)
 
-Table de jointure reliant les conversations aux sujets :
+#### Niveau 3 - Labels (Descriptions spécifiques)
 
-- `id` (uuid, PK)
-- `conversation_id` (uuid, FK)
-- `subject_id` (uuid, FK)
-- `confidence` (double) - Score de confiance de classification
-- `conversation_timestamp` (timestamp)
-- `conversation_hash` (text, unique) - Hash du segment de discussion
-- `created_at` (timestamp)
+- Labels très spécifiques extraits des discussions par l'agent LLM
+- Exemples : "accès compte et mot de passe oublié", "contestation abandon et statut dossier"
+- Tables : `labels` (avec embeddings), `label_topics` (relation many-to-many avec topics)
+- Seuil de similarité très strict (0.92) pour éviter les doublons
 
-## Flux de Classification
+#### Sessions et Discussions
 
-1. **Réception du webhook Crisp** lorsqu'une conversation est marquée comme résolue
-2. **Mise en file d'attente** dans BullMQ pour traitement asynchrone
-3. **Récupération des messages** depuis l'API Crisp
-4. **Division en discussions** (échanges de messages continus)
-5. **Vérification de hash** - Ignorer si le hash de discussion est déjà traité
-6. **Classification LLM** - Génération de description du sujet
-7. **Recherche de similarité vectorielle** avec pgvector :
-   - `>= 0.85` similarité : Réutiliser le sujet existant
-   - `0.70-0.85` : Créer un alias de sujet lié au parent
-   - `< 0.70` : Créer un nouveau sujet
-8. **Stockage de l'association** dans `conversation_labels`
+- `sessions` : Représente tout l'historique de conversation d'un utilisateur (1 session = 1 user)
+- `discussions` : Threads individuels de conversation au sein d'une session (séparés par événements `state:resolved`)
+- `discussion_classifications` : Lie les discussions aux labels avec score de confiance
+
+## Flux de Classification - Multi-stage avec RAG
+
+### Stage 1 : Extraction de Label (Agent LLM enrichi)
+
+1. **Réception du webhook Crisp** → Mise en file d'attente BullMQ
+2. **Récupération messages** → Division en discussions individuelles
+3. **Classification enrichie** avec agent LLM :
+   - Génère un **label** très spécifique (ex: "contestation abandon et statut dossier")
+   - Extrait le **contexte sémantique** (type de problématique, étape du parcours VAE)
+   - Détecte les **entités** (diplômes, organismes, actions, acteurs)
+   - Calcule la **confiance** de classification
+
+### Stage 2 : Assignation de Topics (RAG-Enhanced)
+
+1. **Recherche vectorielle de labels similaires** (seuil 0.92 - très strict)
+   - Si label existant trouvé → réutilisation
+   - Sinon → création nouveau label
+2. **RAG - Retrieval de topics candidats** :
+   - Embedding du label + contexte sémantique
+   - Recherche vectorielle des 5 topics les plus similaires (seuil 0.75)
+   - Enrichissement avec exemples de labels de chaque topic
+3. **Assignation par agent LLM** avec few-shot learning :
+   - Analyse le label, contexte et entités
+   - Compare avec topics candidats et leurs exemples
+   - Décide : réutiliser topic existant OU créer nouveau topic
+   - Support **multi-topic** : un label peut appartenir à plusieurs topics
+   - Désigne toujours un topic **PRIMARY** (le plus pertinent)
+4. **Création automatique de nouveaux topics** si nécessaire :
+   - Génération du nom et slug du topic
+   - Assignation à la thématique appropriée
+   - Initialisation avec l'embedding du label
+5. **Liaison label → topics** avec méta-données :
+   - Confidence score par assignation
+   - Flag is_primary
+   - Méthode d'assignation (rag_agent, manual, clustering)
+
+### Stage 3 : Stockage Hiérarchique
+
+1. **Création de la discussion** dans la session
+2. **Classification discussion → label** avec confiance et méthode
+3. **Traçabilité complète** : session → discussion → label → topics → thématique
+
+### Avantages du Système Hiérarchique
+
+- **Organisation en 3 niveaux** : Navigation intuitive du général (thématique) au spécifique (label)
+- **Multi-topic par label** : Un label peut appartenir à plusieurs topics (ex: problème d'email lié à dépôt de document)
+- **RAG-Enhanced** : Utilise la recherche vectorielle pour trouver les topics similaires avant décision LLM
+- **Auto-création de topics** : Le système crée automatiquement de nouveaux topics quand nécessaire
+- **Explainability** : Chaque assignation inclut un raisonnement et un score de confiance
+- **Seuils optimisés** :
+  - Labels : 0.92 (très strict, évite les doublons)
+  - Topics : 0.75 (permet regroupement conceptuel)
 
 ### Stratégie de Déduplication
 
-- **Niveau conversation** : Hash SHA256 du contenu complet de conversation
-- **Niveau discussion** : Hash SHA256 des segments individuels de discussion
+- **Niveau session** : Hash SHA256 du contenu complet de la conversation Crisp
+- **Niveau discussion** : Hash SHA256 des segments individuels (entre événements `state:resolved`)
 - Garantit l'idempotence même lorsque les conversations sont retraitées
-
-### Similarité Vectorielle
-
-Utilise la similarité cosinus via pgvector pour faire correspondre des sujets sémantiquement similaires. Les seuils sont configurables via les variables d'environnement.
 
 ## Développement
 

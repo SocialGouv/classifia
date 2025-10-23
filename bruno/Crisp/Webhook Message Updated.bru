@@ -20,13 +20,15 @@ body:json {
     "event": "message:updated",
     "timestamp": 1640000000000,
     "data": {
-      "session_id": "session_example_123",
+      "session_id": "session_0ede55a8-2e47-41b5-b38e-c9d146c6ba24",
       "fingerprint": 123456789,
       "user": {
         "type": "contact",
         "nickname": "John Doe"
       },
-      "content": "Message example",
+      "content":{
+        "namespace": "state:resolved"
+      },
       "type": "text",
       "from": "contact",
       "timestamp": 1640000000
@@ -34,19 +36,19 @@ body:json {
   }
 }
 
-docs {
-  Endpoint webhook pour recevoir les notifications de mise à jour de messages depuis Crisp.
-
-  Paramètres:
-  - secret (query, required): Secret de webhook Crisp pour authentification (CRISP_WEBHOOK_SECRET)
-
-  Corps de la requête (JSON):
-  Payload de webhook Crisp contenant les détails de l'événement message:updated
-
-  Retourne HTTP 200 si le webhook est traité avec succès, HTTP 400 si le secret est invalide.
-}
-
 settings {
   encodeUrl: true
+  timeout: 0
 }
 
+docs {
+  Endpoint webhook pour recevoir les notifications de mise à jour de messages depuis Crisp.
+  
+  Paramètres:
+  - secret (query, required): Secret de webhook Crisp pour authentification (CRISP_WEBHOOK_SECRET)
+  
+  Corps de la requête (JSON):
+  Payload de webhook Crisp contenant les détails de l'événement message:updated
+  
+  Retourne HTTP 200 si le webhook est traité avec succès, HTTP 400 si le secret est invalide.
+}

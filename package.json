@@ -37,9 +37,6 @@
     "docker:clean": "docker-compose down -v --remove-orphans"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^2.0.53",
-    "@langchain/core": "^1.0.1",
-    "@langchain/langgraph": "^1.0.0",
     "@nestjs/bullmq": "^11.0.4",
     "@nestjs/cli": "^11.0.10",
     "@nestjs/common": "^11.1.7",
@@ -47,8 +44,6 @@
     "@nestjs/core": "^11.1.7",
     "@nestjs/platform-fastify": "^11.1.7",
     "@openai/agents": "^0.1.10",
-    "@voltagent/core": "^1.1.30",
-    "ai": "^5.0.76",
     "axios": "^1.12.2",
     "bullmq": "^5.61.0",
     "class-transformer": "^0.5.1",
@@ -56,7 +51,6 @@
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.5",
     "drizzle-orm": "^0.44.6",
-    "langchain": "^1.0.1",
     "nestjs-pino": "^4.4.1",
     "pg": "^8.16.3",
     "pino": "^10.1.0",
