@@ -43,7 +43,7 @@
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.7",
     "@nestjs/platform-fastify": "^11.1.7",
-    "@openai/agents": "^0.1.10",
+    "@openai/agents": "^0.2.0",
     "axios": "^1.12.2",
     "bullmq": "^5.61.0",
     "class-transformer": "^0.5.1",
