@@ -21,7 +21,7 @@ export class AlbertEmbedding {
         'Content-Type': 'application/json',
       },
     });
-    this.model = ALBERT_MODELS.embeddings_small.id;
+    this.model = ALBERT_MODELS.openweight_embeddings.id;
   }
 
   async embed(text: string | string[]) {

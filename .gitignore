@@ -60,3 +60,8 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # ESLint cache
 .eslintcache
+
+# Claude
+.claude
+code_specs/
+CLAUDE.md

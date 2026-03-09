@@ -57,49 +57,57 @@ export interface AlbertChatCompletionRequest {
 }
 
 export const ALBERT_MODELS = {
-  albert_small: {
-    id: 'albert-small',
-    name: 'Albert Small',
+  openweight_small: {
+    id: 'openweight-small',
+    name: 'Openweight Small',
     type: 'text-generation',
-    max_context_length: 64000,
+    max_context_length: 256000,
     owned_by: 'OpenGateLLM',
-    aliases: ['meta-llama/Llama-3.1-8B-Instruct'],
+    aliases: ['mistralai/Ministral-3-8B-Instruct-2512'],
   },
-  albert_large: {
-    id: 'albert-large',
-    name: 'Albert Large',
+  openweight_medium: {
+    id: 'openweight-medium',
+    name: 'Openweight Medium',
     type: 'image-text-to-text',
     max_context_length: 128000,
     owned_by: 'Albert API (prod)',
     aliases: ['mistralai/Mistral-Small-3.2-24B-Instruct-2506'],
   },
-  albert_code: {
-    id: 'albert-code',
-    name: 'Albert Code',
+  openweight_large: {
+    id: 'openweight-large',
+    name: 'Openweight Large',
     type: 'text-generation',
     max_context_length: 131072,
-    owned_by: 'OpenGateLLM',
-    aliases: ['Qwen/Qwen2.5-Coder-32B-Instruct-AWQ', 'albert-code-beta'],
+    owned_by: 'Albert API (prod)',
+    aliases: ['openai/gpt-oss-120b'],
   },
-  embeddings_small: {
-    id: 'embeddings-small',
-    name: 'Embeddings Small',
+  openweight_code: {
+    id: 'openweight-code',
+    name: 'Openweight Code',
+    type: 'text-generation',
+    max_context_length: 262144,
+    owned_by: 'OpenGateLLM',
+    aliases: ['Qwen/Qwen3-Coder-30B-A3B-Instruct'],
+  },
+  openweight_embeddings: {
+    id: 'openweight-embeddings',
+    name: 'Openweight Embeddings',
     type: 'text-embeddings-inference',
     max_context_length: 8192,
     owned_by: 'OpenGateLLM',
     aliases: ['BAAI/bge-m3'],
   },
-  audio_large: {
-    id: 'audio-large',
-    name: 'Audio Large',
+  openweight_audio: {
+    id: 'openweight-audio',
+    name: 'Openweight Audio',
     type: 'automatic-speech-recognition',
     max_context_length: null,
     owned_by: 'OpenGateLLM',
     aliases: ['openai/whisper-large-v3'],
   },
-  rerank_small: {
-    id: 'rerank-small',
-    name: 'Rerank Small',
+  openweight_rerank: {
+    id: 'openweight-rerank',
+    name: 'Openweight Rerank',
     type: 'text-classification',
     max_context_length: 8192,
     owned_by: 'OpenGateLLM',

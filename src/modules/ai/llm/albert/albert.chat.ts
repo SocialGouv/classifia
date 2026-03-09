@@ -31,7 +31,7 @@ export class AlbertChat implements ChatModel {
         'Content-Type': 'application/json',
       },
     });
-    this.model = ALBERT_MODELS.albert_small.id;
+    this.model = ALBERT_MODELS.openweight_small.id;
   }
 
   async chat(
