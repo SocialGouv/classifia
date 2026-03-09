@@ -20,36 +20,43 @@ import { DrizzleModule } from './modules/drizzle/drizzle.module';
     }),
     LoggerModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        pinoHttp: {
-          level:
-            configService.get('NODE_ENV') === 'production' ? 'info' : 'debug',
-          transport:
-            configService.get('NODE_ENV') === 'development'
-              ? {
-                  target: 'pino-pretty',
-                  options: {
-                    colorize: true,
-                    translateTime: 'SYS:standard',
-                    ignore: 'pid,hostname',
-                  },
-                }
-              : undefined,
-          serializers: {
-            req: (req) => ({
-              method: req.method,
-              url: req.url,
-              headers: {
-                host: req.headers.host,
-                'user-agent': req.headers['user-agent'],
+      useFactory: (configService: ConfigService) => {
+        const isProdOrPreprod =
+          configService.get('NODE_ENV') === 'preproduction' ||
+          configService.get('NODE_ENV') === 'production';
+        const isDev = configService.get('NODE_ENV') === 'development';
+        const level = isProdOrPreprod ? 'info' : 'debug';
+        const transport = isDev
+          ? {
+              target: 'pino-pretty',
+              options: {
+                colorize: true,
+                translateTime: 'SYS:standard',
+                ignore: 'pid,hostname',
               },
-            }),
-            res: (res) => ({
-              statusCode: res.statusCode,
-            }),
+            }
+          : undefined;
+
+        return {
+          pinoHttp: {
+            level,
+            transport,
+            serializers: {
+              req: (req) => ({
+                method: req.method,
+                url: req.url,
+                headers: {
+                  host: req.headers.host,
+                  'user-agent': req.headers['user-agent'],
+                },
+              }),
+              res: (res) => ({
+                statusCode: res.statusCode,
+              }),
+            },
           },
-        },
-      }),
+        };
+      },
       inject: [ConfigService],
     }),
     BullModule.forRootAsync({

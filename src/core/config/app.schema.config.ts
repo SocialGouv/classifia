@@ -8,7 +8,7 @@ export const configValidationSchema = z.object({
   DATABASE_URL: z.url(),
   REDIS_URL: z.url(),
 
-  NODE_ENV: z.enum(['development', 'test', 'production']),
+  NODE_ENV: z.enum(['development', 'test', 'preproduction', 'production']),
   PORT: z.coerce.number().int().positive(),
 
   CRISP_WEBHOOK_SECRET: z.string().min(1),
